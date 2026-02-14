@@ -59,7 +59,7 @@ export function HomePage() {
                 placeholder="Search for products..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-4 sm:px-6 py-3 sm:py-4 rounded-full text-gray-800 text-base sm:text-lg outline-none focus:ring-4 focus:ring-white/50"
+                className="w-full px-4 sm:px-6 py-3 sm:py-4 rounded-full bg-white/10 backdrop-blur-md border border-white text-white placeholder-white/70 text-base sm:text-lg outline-none focus:ring-4 focus:ring-white/50 transition-all duration-300"
               />
               <button
                 type="submit"
