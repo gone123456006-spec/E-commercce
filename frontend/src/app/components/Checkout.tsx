@@ -110,7 +110,7 @@ export function Checkout() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-yellow-50/40">
       <div className="max-w-7xl mx-auto px-4 py-4 md:py-8">
         <h1 className="text-2xl md:text-4xl mb-4 md:mb-8">Checkout</h1>
 
@@ -128,7 +128,7 @@ export function Checkout() {
                 <div className="flex flex-col items-center">
                   <div className={`w-12 h-12 md:w-16 md:h-16 rounded-full flex items-center justify-center border-2 transition-colors ${
                     isCompleted ? 'bg-green-500 border-green-500 text-white' :
-                    isActive ? 'bg-blue-600 border-blue-600 text-white' :
+                    isActive ? 'bg-green-600 border-green-600 text-white' :
                     'bg-white border-gray-300 text-gray-400'
                   }`}>
                     {isCompleted ? <Check className="w-5 h-5 md:w-8 md:h-8" /> : <Icon className="w-5 h-5 md:w-8 md:h-8" />}
@@ -161,7 +161,7 @@ export function Checkout() {
                         onClick={() => setSelectedAddress(address)}
                         className={`p-3 md:p-4 border-2 rounded-lg cursor-pointer transition-colors ${
                           selectedAddress?.id === address.id
-                            ? 'border-blue-600 bg-blue-50'
+                            ? 'border-green-600 bg-green-50'
                             : 'border-gray-200 hover:border-gray-300'
                         }`}
                       >
@@ -175,7 +175,7 @@ export function Checkout() {
                             </p>
                           </div>
                           {selectedAddress?.id === address.id && (
-                            <Check className="w-5 h-5 md:w-6 md:h-6 text-blue-600 flex-shrink-0" />
+                            <Check className="w-5 h-5 md:w-6 md:h-6 text-green-600 flex-shrink-0" />
                           )}
                         </div>
                       </div>
@@ -186,7 +186,7 @@ export function Checkout() {
                 {!showAddressForm ? (
                   <button
                     onClick={() => setShowAddressForm(true)}
-                    className="w-full px-4 md:px-6 py-2.5 md:py-3 text-sm md:text-base border-2 border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
+                    className="w-full px-4 md:px-6 py-2.5 md:py-3 text-sm md:text-base border-2 border-green-600 text-green-600 rounded-lg hover:bg-green-50 transition-colors"
                   >
                     + Add New Address
                   </button>
@@ -199,48 +199,48 @@ export function Checkout() {
                         placeholder="Full Name"
                         value={newAddress.name}
                         onChange={(e) => setNewAddress({ ...newAddress, name: e.target.value })}
-                        className="px-3 md:px-4 py-2.5 md:py-3 text-sm md:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="px-3 md:px-4 py-2.5 md:py-3 text-sm md:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                       />
                       <input
                         type="tel"
                         placeholder="Mobile Number"
                         value={newAddress.mobile}
                         onChange={(e) => setNewAddress({ ...newAddress, mobile: e.target.value })}
-                        className="px-3 md:px-4 py-2.5 md:py-3 text-sm md:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="px-3 md:px-4 py-2.5 md:py-3 text-sm md:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                       />
                       <input
                         type="text"
                         placeholder="House / Street"
                         value={newAddress.house}
                         onChange={(e) => setNewAddress({ ...newAddress, house: e.target.value })}
-                        className="md:col-span-2 px-3 md:px-4 py-2.5 md:py-3 text-sm md:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="md:col-span-2 px-3 md:px-4 py-2.5 md:py-3 text-sm md:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                       />
                       <input
                         type="text"
                         placeholder="City"
                         value={newAddress.city}
                         onChange={(e) => setNewAddress({ ...newAddress, city: e.target.value })}
-                        className="px-3 md:px-4 py-2.5 md:py-3 text-sm md:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="px-3 md:px-4 py-2.5 md:py-3 text-sm md:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                       />
                       <input
                         type="text"
                         placeholder="State"
                         value={newAddress.state}
                         onChange={(e) => setNewAddress({ ...newAddress, state: e.target.value })}
-                        className="px-3 md:px-4 py-2.5 md:py-3 text-sm md:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="px-3 md:px-4 py-2.5 md:py-3 text-sm md:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                       />
                       <input
                         type="text"
                         placeholder="Pincode"
                         value={newAddress.pincode}
                         onChange={(e) => setNewAddress({ ...newAddress, pincode: e.target.value })}
-                        className="px-3 md:px-4 py-2.5 md:py-3 text-sm md:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="px-3 md:px-4 py-2.5 md:py-3 text-sm md:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                       />
                     </div>
                     <div className="flex flex-col sm:flex-row gap-3 md:gap-4 mt-3 md:mt-4">
                       <button
                         onClick={handleAddAddress}
-                        className="flex-1 px-4 md:px-6 py-2.5 md:py-3 text-sm md:text-base bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                        className="flex-1 px-4 md:px-6 py-2.5 md:py-3 text-sm md:text-base bg-green-600 text-yellow-100 rounded-lg hover:bg-green-500 transition-colors"
                       >
                         Save Address
                       </button>
@@ -257,7 +257,7 @@ export function Checkout() {
                 <button
                   onClick={() => setCurrentStep('review')}
                   disabled={!canProceedToReview}
-                  className="w-full mt-4 md:mt-6 px-4 md:px-6 py-3 md:py-4 text-base md:text-lg bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                  className="w-full mt-4 md:mt-6 px-4 md:px-6 py-3 md:py-4 text-base md:text-lg bg-green-600 text-yellow-100 rounded-lg hover:bg-green-500 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
                 >
                   Continue to Review
                 </button>
@@ -281,7 +281,7 @@ export function Checkout() {
                     </p>
                     <button
                       onClick={() => setCurrentStep('address')}
-                      className="mt-2 text-blue-600 hover:underline"
+                      className="mt-2 text-green-600 hover:underline"
                     >
                       Change Address
                     </button>
@@ -305,7 +305,7 @@ export function Checkout() {
                         <div className="flex-1">
                           <h4 className="text-lg">{product.name}</h4>
                           <p className="text-gray-600">Quantity: {item.quantity}</p>
-                          <p className="text-blue-600">₹{product.price} x {item.quantity}</p>
+                          <p className="text-green-600">₹{product.price} x {item.quantity}</p>
                         </div>
                         <div className="text-lg">
                           ₹{product.price * item.quantity}
@@ -330,7 +330,7 @@ export function Checkout() {
                 <button
                   onClick={() => setCurrentStep('payment')}
                   disabled={!canProceedToPayment}
-                  className="w-full px-4 md:px-6 py-3 md:py-4 text-base md:text-lg bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                  className="w-full px-4 md:px-6 py-3 md:py-4 text-base md:text-lg bg-green-600 text-yellow-100 rounded-lg hover:bg-green-500 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
                 >
                   Continue to Payment
                 </button>
@@ -347,7 +347,7 @@ export function Checkout() {
                     onClick={() => setPaymentMethod('cod')}
                     className={`p-4 md:p-6 border-2 rounded-lg cursor-pointer transition-colors ${
                       paymentMethod === 'cod'
-                        ? 'border-blue-600 bg-blue-50'
+                        ? 'border-green-600 bg-green-50'
                         : 'border-gray-200 hover:border-gray-300'
                     }`}
                   >
@@ -362,7 +362,7 @@ export function Checkout() {
                         </div>
                       </div>
                       {paymentMethod === 'cod' && (
-                        <Check className="w-5 h-5 md:w-6 md:h-6 text-blue-600 flex-shrink-0" />
+                        <Check className="w-5 h-5 md:w-6 md:h-6 text-green-600 flex-shrink-0" />
                       )}
                     </div>
                   </div>
@@ -371,13 +371,13 @@ export function Checkout() {
                     onClick={() => setPaymentMethod('gpay')}
                     className={`p-4 md:p-6 border-2 rounded-lg cursor-pointer transition-colors ${
                       paymentMethod === 'gpay'
-                        ? 'border-blue-600 bg-blue-50'
+                        ? 'border-green-600 bg-green-50'
                         : 'border-gray-200 hover:border-gray-300'
                     }`}
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3 md:gap-4 min-w-0">
-                        <div className="w-10 h-10 md:w-12 md:h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <div className="w-10 h-10 md:w-12 md:h-12 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
                           <span className="text-xl md:text-2xl">📱</span>
                         </div>
                         <div className="min-w-0">
@@ -386,7 +386,7 @@ export function Checkout() {
                         </div>
                       </div>
                       {paymentMethod === 'gpay' && (
-                        <Check className="w-5 h-5 md:w-6 md:h-6 text-blue-600 flex-shrink-0" />
+                        <Check className="w-5 h-5 md:w-6 md:h-6 text-green-600 flex-shrink-0" />
                       )}
                     </div>
                   </div>
@@ -395,7 +395,7 @@ export function Checkout() {
                 <button
                   onClick={handlePlaceOrder}
                   disabled={!canPlaceOrder || isProcessing}
-                  className="w-full px-4 md:px-6 py-3 md:py-4 text-base md:text-lg bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                  className="w-full px-4 md:px-6 py-3 md:py-4 text-base md:text-lg bg-green-600 text-yellow-100 rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
                 >
                   {isProcessing ? (
                     <>
@@ -434,7 +434,7 @@ export function Checkout() {
                 <div className="border-t pt-3 md:pt-4">
                   <div className="flex justify-between text-xl md:text-2xl">
                     <span>Total:</span>
-                    <span className="text-blue-600">₹{total}</span>
+                    <span className="text-green-600">₹{total}</span>
                   </div>
                 </div>
               </div>

@@ -41,13 +41,17 @@ export function Navbar() {
   ];
 
   return (
-    <nav className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
-      <div className="max-w-7xl mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <Link to="/" className="text-xl md:text-2xl text-blue-600 flex items-center gap-2">
-            <ShoppingCart className="w-6 h-6 md:w-8 md:h-8" />
-            <span>ShopZone</span>
+    <nav className="sticky top-0 z-50 bg-green-700 shadow-sm">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4">
+        <div className="flex items-center justify-between h-14 sm:h-16">
+          {/* Logo - responsive sizing */}
+          <Link to="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity">
+            <div className="flex-shrink-0 w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 flex items-center justify-center rounded-lg bg-yellow-400 text-green-800">
+              <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
+            </div>
+            <span className="font-semibold text-base sm:text-lg md:text-xl text-yellow-400">
+              Kiran Rasan
+            </span>
           </Link>
 
           {/* Desktop Navigation Links */}
@@ -60,8 +64,8 @@ export function Navbar() {
                   to={link.path}
                   className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors relative ${
                     isActive(link.path) 
-                      ? 'bg-blue-50 text-blue-600' 
-                      : 'text-gray-700 hover:bg-gray-100'
+                      ? 'bg-green-600/80 text-yellow-400' 
+                      : 'text-yellow-100 hover:bg-green-600/60'
                   }`}
                 >
                   <Icon className="w-5 h-5" />
@@ -76,16 +80,16 @@ export function Navbar() {
             })}
           </div>
 
-          {/* Mobile Menu Button */}
+          {/* Mobile Menu Button - 44px min touch target */}
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
+            className="md:hidden p-3 -m-1 rounded-lg hover:bg-green-600/60 active:bg-green-600 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center touch-manipulation text-yellow-100"
             aria-label="Toggle menu"
           >
             {isMobileMenuOpen ? (
-              <X className="w-6 h-6 text-gray-700" />
+              <X className="w-6 h-6" />
             ) : (
-              <Menu className="w-6 h-6 text-gray-700" />
+              <Menu className="w-6 h-6" />
             )}
           </button>
         </div>
@@ -93,7 +97,7 @@ export function Navbar() {
 
       {/* Mobile Menu */}
       {isMobileMenuOpen && (
-        <div className="md:hidden border-t border-gray-200 bg-white">
+        <div className="md:hidden border-t border-green-600 bg-green-700">
           <div className="px-4 py-4 space-y-2">
             {navLinks.map((link) => {
               const Icon = link.icon;
@@ -103,8 +107,8 @@ export function Navbar() {
                   to={link.path}
                   className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors relative ${
                     isActive(link.path) 
-                      ? 'bg-blue-50 text-blue-600' 
-                      : 'text-gray-700 hover:bg-gray-100'
+                      ? 'bg-green-600/80 text-yellow-400' 
+                      : 'text-yellow-100 hover:bg-green-600/60'
                   }`}
                 >
                   <Icon className="w-6 h-6" />

@@ -18,10 +18,10 @@ export function OrderConfirmation() {
 
   if (!order) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-yellow-50/40 flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-2xl mb-4">Order not found</h2>
-          <Link to="/" className="text-blue-600 hover:underline">
+          <Link to="/" className="text-green-600 hover:underline">
             Go back to home
           </Link>
         </div>
@@ -37,7 +37,7 @@ export function OrderConfirmation() {
   });
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-yellow-50/40">
       <div className="max-w-4xl mx-auto px-4 py-4 md:py-8">
         {/* Success Animation */}
         <div className="text-center mb-6 md:mb-8">
@@ -151,16 +151,16 @@ export function OrderConfirmation() {
               </div>
               <div className="flex justify-between text-xl md:text-2xl border-t pt-2">
                 <span>Total:</span>
-                <span className="text-blue-600">₹{order.total}</span>
+                <span className="text-green-600 font-bold">₹{order.total}</span>
               </div>
             </div>
           </div>
         </div>
 
         {/* SMS Notification Message */}
-        <div className="bg-blue-50 border-2 border-blue-200 rounded-lg md:rounded-xl p-4 md:p-6 mb-4 md:mb-6">
+        <div className="bg-yellow-50 border-2 border-green-200 rounded-lg md:rounded-xl p-4 md:p-6 mb-4 md:mb-6">
           <div className="flex items-start gap-3 md:gap-4">
-            <div className="w-10 h-10 md:w-12 md:h-12 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+            <div className="w-10 h-10 md:w-12 md:h-12 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
               <span className="text-xl md:text-2xl">📱</span>
             </div>
             <div className="min-w-0">
@@ -168,7 +168,7 @@ export function OrderConfirmation() {
               <p className="text-sm md:text-base text-gray-700">
                 We've sent a confirmation message to <span className="font-medium">{order.address.mobile}</span>
               </p>
-              <div className="mt-2 md:mt-3 p-2 md:p-3 bg-white rounded-lg border border-blue-200">
+              <div className="mt-2 md:mt-3 p-2 md:p-3 bg-white rounded-lg border border-green-200">
                 <p className="text-xs md:text-sm text-gray-700">
                   "Your order #{order.id} has been confirmed. Thank you for shopping with us!"
                 </p>
@@ -181,14 +181,14 @@ export function OrderConfirmation() {
         <div className="flex flex-col sm:flex-row gap-3 md:gap-4">
           <Link
             to="/orders"
-            className="flex-1 px-4 md:px-6 py-3 md:py-4 bg-blue-600 text-white rounded-lg md:rounded-xl hover:bg-blue-700 transition-colors text-base md:text-lg text-center flex items-center justify-center gap-2"
+            className="flex-1 px-4 md:px-6 py-3 md:py-4 bg-green-600 text-yellow-100 rounded-lg md:rounded-xl hover:bg-green-500 transition-colors text-base md:text-lg text-center flex items-center justify-center gap-2"
           >
             <Package className="w-4 h-4 md:w-5 md:h-5" />
             View All Orders
           </Link>
           <Link
             to="/"
-            className="flex-1 px-4 md:px-6 py-3 md:py-4 border-2 border-blue-600 text-blue-600 rounded-lg md:rounded-xl hover:bg-blue-50 transition-colors text-base md:text-lg text-center flex items-center justify-center gap-2"
+            className="flex-1 px-4 md:px-6 py-3 md:py-4 border-2 border-green-600 text-green-600 rounded-lg md:rounded-xl hover:bg-green-50 transition-colors text-base md:text-lg text-center flex items-center justify-center gap-2"
           >
             <Home className="w-4 h-4 md:w-5 md:h-5" />
             Continue Shopping

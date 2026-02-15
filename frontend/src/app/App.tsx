@@ -13,12 +13,13 @@ import { Account } from './components/Account';
 
 import { AuthProvider } from './context/AuthContext';
 import { Footer } from './components/Footer';
+import { MobileBottomNav } from './components/MobileBottomNav';
 
 export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-yellow-50/40 pb-16 md:pb-0">
           <Navbar />
           <Routes>
             <Route path="/" element={<HomePage />} />
@@ -33,6 +34,7 @@ export default function App() {
           </Routes>
           <Toaster position="top-center" richColors />
           <Footer />
+          <MobileBottomNav />
         </div>
       </BrowserRouter>
     </AuthProvider>

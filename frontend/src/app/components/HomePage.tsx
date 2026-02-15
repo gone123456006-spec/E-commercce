@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, ChevronRight } from 'lucide-react';
+import { Search, ChevronRight, ChevronLeft } from 'lucide-react';
 
 const categories = [
   {
@@ -35,74 +35,88 @@ export function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Hero Section */}
-      <div className="relative h-[400px] md:h-[500px] bg-gradient-to-r from-blue-600 to-purple-600">
-        <img
-          src="https://images.unsplash.com/photo-1766524871302-88590e1fa1bf?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmYXNoaW9uJTIwc2hvcHBpbmclMjBzYWxlJTIwYmFubmVyfGVufDF8fHx8MTc3MDM2MDQ4Mnww&ixlib=rb-4.1.0&q=80&w=1080"
-          alt="Hero banner"
-          className="w-full h-full object-cover opacity-40"
-        />
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-white px-4">
-          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl mb-3 md:mb-4 text-center leading-tight">
-            Welcome to ShopZone
-          </h1>
-          <p className="text-base sm:text-lg md:text-xl lg:text-2xl mb-6 md:mb-8 text-center px-4">
-            Discover Amazing Deals on Your Favorite Products
-          </p>
-
-          {/* Search Bar */}
-          <form onSubmit={handleSearch} className="w-full max-w-2xl px-4">
-            <div className="relative">
+    <div className="min-h-screen bg-yellow-50/40">
+      {/* Search Bar */}
+      <div className="bg-yellow-50/40 py-3 px-3 sm:py-4 sm:px-4">
+        <div className="max-w-xl mx-auto">
+          <form onSubmit={handleSearch}>
+            <div className="relative flex items-center bg-white rounded-full shadow-sm overflow-hidden">
               <input
-                type="text"
+                type="search"
+                inputMode="search"
+                autoComplete="off"
                 placeholder="Search for products..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-4 sm:px-6 py-3 sm:py-4 rounded-full bg-white/10 backdrop-blur-md border border-white text-white placeholder-white/70 text-base sm:text-lg outline-none focus:ring-4 focus:ring-white/50 transition-all duration-300"
+                className="flex-1 min-w-0 px-3 py-2 sm:px-4 sm:py-2.5 bg-transparent text-gray-900 placeholder-gray-500 text-sm sm:text-base outline-none border-0 focus:ring-0"
               />
               <button
                 type="submit"
-                className="absolute right-2 top-1/2 -translate-y-1/2 bg-blue-600 hover:bg-blue-700 text-white p-2 sm:p-3 rounded-full transition-colors"
+                className="m-1 flex-shrink-0 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-green-600 active:scale-95 transition-all duration-200 text-yellow-100 flex items-center justify-center touch-manipulation hover:bg-green-500"
               >
-                <Search className="w-5 h-5 sm:w-6 sm:h-6" />
+                <Search className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
             </div>
           </form>
         </div>
       </div>
 
+      {/* Banner A - Big Savings on Grains and Pulses */}
+      <div className="w-full max-w-7xl mx-auto px-3 sm:px-4 py-3 sm:py-4 md:py-6">
+        <div className="relative group rounded-xl sm:rounded-2xl overflow-hidden shadow-lg">
+          <Link to="/category/food" className="block active:opacity-90 transition-opacity">
+            <img
+              src="/assets/images/banner-grains-pulses.png"
+              alt="Big Savings on Grains and Pulses"
+              className="w-full h-auto object-cover max-h-[160px] sm:max-h-[240px] md:max-h-[300px] object-center"
+            />
+          </Link>
+          <button
+            className="absolute left-1 sm:left-2 top-1/2 -translate-y-1/2 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/90 shadow flex items-center justify-center active:scale-95 transition-all touch-manipulation md:opacity-0 md:group-hover:opacity-100"
+            aria-label="Previous"
+          >
+            <ChevronLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-700" />
+          </button>
+          <button
+            className="absolute right-1 sm:right-2 top-1/2 -translate-y-1/2 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/90 shadow flex items-center justify-center active:scale-95 transition-all touch-manipulation md:opacity-0 md:group-hover:opacity-100"
+            aria-label="Next"
+          >
+            <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-700" />
+          </button>
+        </div>
+      </div>
+
       {/* Categories Section */}
-      <div className="max-w-7xl mx-auto px-4 py-8 md:py-16">
-        <div className="text-center mb-8 md:mb-12">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl mb-3 md:mb-4">Shop by Category</h2>
-          <p className="text-base sm:text-lg md:text-xl text-gray-600">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 py-6 sm:py-8 md:py-16">
+        <div className="text-center mb-6 sm:mb-8 md:mb-12">
+          <h2 className="text-xl sm:text-2xl md:text-4xl mb-2 sm:mb-3 md:mb-4">Shop by Category</h2>
+          <p className="text-sm sm:text-base md:text-xl text-gray-600 px-2">
             Browse our wide selection of products
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-8">
+        <div className="grid grid-cols-3 gap-2 sm:gap-4 md:gap-8">
           {categories.map((category) => (
             <Link
               key={category.id}
               to={`/category/${category.id}`}
-              className="group relative h-64 sm:h-72 md:h-80 rounded-xl md:rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2"
+              className="group relative h-28 sm:h-40 md:h-56 rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 transform active:scale-[0.98] sm:hover:-translate-y-2 touch-manipulation"
             >
               <img
                 src={category.image}
                 alt={category.name}
                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex flex-col justify-end p-4 md:p-6">
-                <h3 className="text-2xl sm:text-3xl text-white mb-1 md:mb-2">
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex flex-col justify-end p-2 sm:p-4 md:p-6">
+                <h3 className="text-sm sm:text-xl md:text-3xl text-white mb-0.5 sm:mb-1 md:mb-2 font-medium">
                   {category.name}
                 </h3>
-                <p className="text-white/90 text-sm sm:text-base md:text-lg mb-2 md:mb-3">
+                <p className="text-white/90 text-xs sm:text-sm md:text-lg mb-1 sm:mb-2 md:mb-3 hidden sm:block">
                   {category.description}
                 </p>
-                <div className="flex items-center text-white group-hover:text-blue-300 transition-colors">
-                  <span className="text-base md:text-lg">Shop Now</span>
-                  <ChevronRight className="w-5 h-5 md:w-6 md:h-6 ml-2 group-hover:translate-x-2 transition-transform" />
+                <div className="flex items-center text-white group-hover:text-yellow-400 transition-colors">
+                  <span className="text-xs sm:text-base md:text-lg">Shop Now</span>
+                  <ChevronRight className="w-3 h-3 sm:w-5 sm:h-5 md:w-6 md:h-6 ml-1 sm:ml-2 group-hover:translate-x-2 transition-transform" />
                 </div>
               </div>
             </Link>
@@ -111,12 +125,12 @@ export function HomePage() {
       </div>
 
       {/* Features Section */}
-      <div className="bg-white py-8 md:py-16">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 text-center">
+      <div className="bg-yellow-50/40 py-6 sm:py-8 md:py-16">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 md:gap-8 text-center">
             <div className="p-4 md:p-6">
-              <div className="w-14 h-14 md:w-16 md:h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3 md:mb-4">
-                <svg className="w-7 h-7 md:w-8 md:h-8 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="w-14 h-14 md:w-16 md:h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-3 md:mb-4">
+                <svg className="w-7 h-7 md:w-8 md:h-8 text-yellow-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
@@ -135,8 +149,8 @@ export function HomePage() {
             </div>
 
             <div className="p-4 md:p-6">
-              <div className="w-14 h-14 md:w-16 md:h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3 md:mb-4">
-                <svg className="w-7 h-7 md:w-8 md:h-8 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="w-14 h-14 md:w-16 md:h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3 md:mb-4">
+                <svg className="w-7 h-7 md:w-8 md:h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
               </div>

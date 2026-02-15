@@ -32,14 +32,14 @@ export function Orders() {
 
   if (orders.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+      <div className="min-h-screen bg-yellow-50/40 flex items-center justify-center px-4">
         <div className="text-center">
           <Package className="w-16 h-16 md:w-24 md:h-24 text-gray-300 mx-auto mb-3 md:mb-4" />
           <h2 className="text-2xl md:text-3xl mb-3 md:mb-4">No orders yet</h2>
           <p className="text-base md:text-lg lg:text-xl text-gray-600 mb-6 md:mb-8">Start shopping to see your orders here!</p>
           <Link
             to="/"
-            className="inline-block px-6 md:px-8 py-3 md:py-4 bg-blue-600 text-white rounded-lg md:rounded-xl hover:bg-blue-700 transition-colors text-base md:text-lg"
+            className="inline-block px-6 md:px-8 py-3 md:py-4 bg-green-600 text-yellow-100 rounded-lg md:rounded-xl hover:bg-green-500 transition-colors text-base md:text-lg"
           >
             Start Shopping
           </Link>
@@ -49,7 +49,7 @@ export function Orders() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-yellow-50/40">
       <div className="max-w-7xl mx-auto px-4 py-4 md:py-8">
         <h1 className="text-2xl md:text-4xl mb-4 md:mb-8">My Orders</h1>
 
@@ -75,7 +75,7 @@ export function Orders() {
                   </div>
                   <div>
                     <p className="text-xs md:text-sm text-gray-600">Total Amount</p>
-                    <p className="text-base md:text-xl text-blue-600">₹{order.total}</p>
+                    <p className="text-base md:text-xl text-green-600 font-bold">₹{order.total}</p>
                   </div>
                   <div className="col-span-2 md:col-span-1">
                     <p className="text-xs md:text-sm text-gray-600 mb-1">Status</p>
