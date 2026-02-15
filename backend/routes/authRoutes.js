@@ -5,8 +5,9 @@ import User from '../models/User.js';
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key_change_this';
 
-// Generate 4-digit OTP
-const generateOTP = () => Math.floor(1000 + Math.random() * 9000).toString();
+// DUMMY OTP for testing - always use 1234
+const DUMMY_OTP = '1234';
+const generateOTP = () => DUMMY_OTP;
 
 // @route   POST /api/auth/send-otp
 // @desc    Send OTP to mobile number (Simulated)
@@ -37,7 +38,8 @@ router.post('/send-otp', async (req, res) => {
 
         res.json({
             message: 'OTP sent successfully',
-            otp: otp // Included for testing purposes
+            otp: otp,
+            dummyOtp: DUMMY_OTP // Use 1234 for testing
         });
 
     } catch (error) {

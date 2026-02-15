@@ -1,10 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Check, MapPin, CreditCard, Package } from 'lucide-react';
+import { Check, MapPin, CreditCard, Package, Loader2, Navigation } from 'lucide-react';
 import { getCart, getAddresses, saveAddress, createOrder, clearCart } from '../utils/storage';
 import { getProductById } from '../data/products';
+import { isWithinDeliveryRange, SHOP_LOCATION } from '../utils/location';
 import type { Address } from '../utils/storage';
 import { toast } from 'sonner';
+
+type LocationStatus = 'idle' | 'checking' | 'in_range' | 'out_of_range' | 'denied';
 
 type CheckoutStep = 'address' | 'review' | 'payment';
 
@@ -16,6 +19,10 @@ export function Checkout() {
   const [paymentMethod, setPaymentMethod] = useState<'cod' | 'gpay' | null>(null);
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  const [locationStatus, setLocationStatus] = useState<LocationStatus>('idle');
+  const [distanceKm, setDistanceKm] = useState<number | null>(null);
+  const [isFetchingAddress, setIsFetchingAddress] = useState(false);
 
   const [newAddress, setNewAddress] = useState({
     name: '',
@@ -35,6 +42,81 @@ export function Checkout() {
     loadAddresses();
   }, [cartItems, navigate]);
 
+  // Auto-detect location when on Address step
+  const checkLocation = useCallback(() => {
+    if (!navigator.geolocation) {
+      setLocationStatus('denied');
+      return;
+    }
+    setLocationStatus('checking');
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { inRange, distanceKm: d } = isWithinDeliveryRange(
+          position.coords.latitude,
+          position.coords.longitude
+        );
+        setDistanceKm(d);
+        setLocationStatus(inRange ? 'in_range' : 'out_of_range');
+      },
+      () => setLocationStatus('denied')
+    );
+  }, []);
+
+  useEffect(() => {
+    if (currentStep === 'address') {
+      checkLocation();
+    }
+  }, [currentStep, checkLocation]);
+
+  const handleUseMyLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error('Location is not supported');
+      return;
+    }
+    setIsFetchingAddress(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { inRange, distanceKm: d } = isWithinDeliveryRange(
+          position.coords.latitude,
+          position.coords.longitude
+        );
+        setDistanceKm(d);
+        setLocationStatus(inRange ? 'in_range' : 'out_of_range');
+        if (!inRange) {
+          setIsFetchingAddress(false);
+          toast.error(`You're ${d.toFixed(1)}km from store. We deliver within 6km only.`);
+          return;
+        }
+        try {
+          const { lat, lng } = position.coords;
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`,
+            { headers: { 'Accept-Language': 'en' } }
+          );
+          const data = await res.json();
+          const addr = data?.address || {};
+          setNewAddress((prev) => ({
+            ...prev,
+            house: [addr.road, addr.suburb, addr.village].filter(Boolean).join(', ') || prev.house,
+            city: addr.city || addr.town || addr.county || addr.state_district || prev.city,
+            state: addr.state || prev.state,
+            pincode: addr.postcode || prev.pincode
+          }));
+          setShowAddressForm(true);
+          toast.success('Address filled from your location');
+        } catch {
+          toast.error('Could not fetch address. Please enter manually.');
+        }
+        setIsFetchingAddress(false);
+      },
+      () => {
+        setLocationStatus('denied');
+        setIsFetchingAddress(false);
+        toast.error('Allow location access');
+      }
+    );
+  };
+
   const loadAddresses = () => {
     const savedAddresses = getAddresses();
     setAddresses(savedAddresses);
@@ -48,11 +130,16 @@ export function Checkout() {
       const product = getProductById(item.productId);
       return total + (product?.price || 0) * item.quantity;
     }, 0);
-    const deliveryCharge = subtotal >= 1000 ? 0 : 50;
+    const FREE_DELIVERY_THRESHOLD = 299;
+    const DELIVERY_CHARGE = 39;
+    const deliveryCharge = subtotal >= FREE_DELIVERY_THRESHOLD ? 0 : DELIVERY_CHARGE;
     return { subtotal, deliveryCharge, total: subtotal + deliveryCharge };
   };
 
   const { subtotal, deliveryCharge, total } = calculateTotal();
+  const gpayQrUrl = `https://quickchart.io/qr?size=320&text=${encodeURIComponent(
+    `upi://pay?pa=shopzone@okaxis&pn=ShopZone&am=${total}&cu=INR&tn=ShopZone%20Order%20Payment`
+  )}`;
 
   const handleAddAddress = () => {
     if (!newAddress.name || !newAddress.mobile || !newAddress.house || 
@@ -76,7 +163,7 @@ export function Checkout() {
     toast.success('Address added successfully');
   };
 
-  const handlePlaceOrder = async () => {
+  const handlePlaceOrder = (paymentStatusOverride?: 'pending' | 'paid') => {
     if (!selectedAddress) {
       toast.error('Please select a delivery address');
       return;
@@ -87,19 +174,43 @@ export function Checkout() {
       return;
     }
 
-    setIsProcessing(true);
+    // Verify delivery range (6km) using user's location
+    if (!navigator.geolocation) {
+      toast.error('Location access is required to verify delivery availability');
+      return;
+    }
 
-    // Simulate order processing
-    setTimeout(() => {
-      const order = createOrder(cartItems, selectedAddress, paymentMethod, total);
-      clearCart();
-      window.dispatchEvent(new Event('cartUpdated'));
-      setIsProcessing(false);
-      navigate(`/order-confirmation/${order.id}`);
-    }, 2000);
+    setIsProcessing(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { inRange, distanceKm } = isWithinDeliveryRange(
+          position.coords.latitude,
+          position.coords.longitude
+        );
+        if (!inRange) {
+          setIsProcessing(false);
+          toast.error(
+            `We deliver only within ${SHOP_LOCATION.deliveryRadiusKm}km of our store. Your location is ${distanceKm.toFixed(1)}km away.`
+          );
+          return;
+        }
+        // Within range - place order
+        const order = createOrder(cartItems, selectedAddress, paymentMethod, total, {
+          paymentStatus: paymentStatusOverride || (paymentMethod === 'gpay' ? 'paid' : 'pending')
+        });
+        clearCart();
+        window.dispatchEvent(new Event('cartUpdated'));
+        setIsProcessing(false);
+        navigate(`/order-confirmation/${order.id}`);
+      },
+      () => {
+        setIsProcessing(false);
+        toast.error('Please allow location access to verify we deliver to your area');
+      }
+    );
   };
 
-  const canProceedToReview = selectedAddress !== null;
+  const canProceedToReview = selectedAddress !== null && locationStatus === 'in_range';
   const canProceedToPayment = selectedAddress !== null;
   const canPlaceOrder = selectedAddress !== null && paymentMethod !== null;
 
@@ -152,6 +263,51 @@ export function Checkout() {
             {currentStep === 'address' && (
               <div className="bg-white rounded-lg md:rounded-xl shadow-md p-4 md:p-6">
                 <h2 className="text-xl md:text-2xl mb-4 md:mb-6">Select Delivery Address</h2>
+
+                {/* Auto-detect location status */}
+                <div className={`mb-4 md:mb-6 p-4 rounded-lg border ${
+                  locationStatus === 'in_range' ? 'bg-green-50 border-green-200' :
+                  locationStatus === 'out_of_range' || locationStatus === 'denied' ? 'bg-red-50 border-red-200' :
+                  'bg-blue-50 border-blue-200'
+                }`}>
+                  {(locationStatus === 'checking' || locationStatus === 'idle') && (
+                    <p className="text-sm md:text-base flex items-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Detecting your location from store...
+                    </p>
+                  )}
+                  {locationStatus === 'in_range' && distanceKm !== null && (
+                    <p className="text-sm md:text-base text-green-800">
+                      <Check className="inline w-4 h-4 mr-1" />
+                      <strong>You're within delivery range.</strong> {distanceKm.toFixed(1)} km from our store.
+                    </p>
+                  )}
+                  {locationStatus === 'out_of_range' && distanceKm !== null && (
+                    <p className="text-sm md:text-base text-red-800">
+                      <MapPin className="inline w-4 h-4 mr-1" />
+                      You're <strong>{distanceKm.toFixed(1)} km</strong> from our store. We deliver within {SHOP_LOCATION.deliveryRadiusKm}km only.
+                    </p>
+                  )}
+                  {locationStatus === 'denied' && (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm md:text-base text-amber-800">Allow location access to verify delivery availability.</p>
+                      <button onClick={checkLocation} className="text-sm px-3 py-1 bg-amber-100 text-amber-800 rounded hover:bg-amber-200">Retry</button>
+                    </div>
+                  )}
+                  <p className="text-xs mt-2 text-gray-600">
+                    Store: <a href={SHOP_LOCATION.mapsUrl} target="_blank" rel="noopener noreferrer" className="text-green-600 hover:underline">View on map</a>
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleUseMyLocation}
+                  disabled={locationStatus === 'checking' || isFetchingAddress}
+                  className="w-full mb-4 px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {isFetchingAddress ? <Loader2 className="w-5 h-5 animate-spin" /> : <Navigation className="w-5 h-5" />}
+                  Use my current location (auto-fill address)
+                </button>
 
                 {addresses.length > 0 && (
                   <div className="space-y-3 md:space-y-4 mb-4 md:mb-6">
@@ -318,12 +474,7 @@ export function Checkout() {
                 {/* Estimated Delivery */}
                 <div className="p-4 bg-green-50 rounded-lg mb-6">
                   <p className="text-green-700">
-                    Estimated delivery: {new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN', { 
-                      weekday: 'long', 
-                      year: 'numeric', 
-                      month: 'long', 
-                      day: 'numeric' 
-                    })}
+                    Average delivery: <strong>15 - 30 minutes</strong>
                   </p>
                 </div>
 
@@ -391,24 +542,49 @@ export function Checkout() {
                     </div>
                   </div>
                 </div>
+                {paymentMethod === 'gpay' && (
+                  <div className="border border-green-200 rounded-lg p-4 bg-green-50 mb-4">
+                    <h3 className="text-base md:text-lg mb-2 text-green-800">Scan & Pay with Google Pay (UPI)</h3>
+                    <img
+                      src={gpayQrUrl}
+                      alt="Google Pay UPI QR"
+                      className="w-56 h-56 md:w-72 md:h-72 object-contain mx-auto rounded-lg border bg-white"
+                    />
+                    <p className="text-xs md:text-sm text-gray-600 mt-3 text-center">
+                      Scan this QR in GPay and complete payment of <strong>₹{total}</strong>.
+                    </p>
+                    <button
+                      onClick={() => {
+                        toast.success('Payment marked as completed. Placing order...');
+                        handlePlaceOrder('paid');
+                      }}
+                      disabled={isProcessing}
+                      className="w-full mt-4 px-4 md:px-6 py-3 md:py-4 text-base md:text-lg bg-green-600 text-yellow-100 rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                    >
+                      I Have Paid - Auto Place Order
+                    </button>
+                  </div>
+                )}
 
-                <button
-                  onClick={handlePlaceOrder}
-                  disabled={!canPlaceOrder || isProcessing}
-                  className="w-full px-4 md:px-6 py-3 md:py-4 text-base md:text-lg bg-green-600 text-yellow-100 rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-                >
-                  {isProcessing ? (
-                    <>
-                      <div className="w-5 h-5 md:w-6 md:h-6 border-4 border-white border-t-transparent rounded-full animate-spin" />
-                      <span>Processing...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>Place Order</span>
-                      <span>₹{total}</span>
-                    </>
-                  )}
-                </button>
+                {paymentMethod === 'cod' && (
+                  <button
+                    onClick={() => handlePlaceOrder('pending')}
+                    disabled={!canPlaceOrder || isProcessing}
+                    className="w-full px-4 md:px-6 py-3 md:py-4 text-base md:text-lg bg-green-600 text-yellow-100 rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                  >
+                    {isProcessing ? (
+                      <>
+                        <div className="w-5 h-5 md:w-6 md:h-6 border-4 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>Processing...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Place Order</span>
+                        <span>₹{total}</span>
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
             )}
           </div>

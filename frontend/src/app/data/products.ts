@@ -71,6 +71,46 @@ export const products: Product[] = [
     description: 'Professional blazer perfect for business meetings and formal events.',
     stock: 20
   },
+  {
+    id: 'c7',
+    name: 'Cotton Socks Pack',
+    price: 100,
+    rating: 4.3,
+    category: 'clothes',
+    image: 'https://images.unsplash.com/photo-1586354782930-d6921b63a881?w=400',
+    description: 'Comfortable pack of 3 cotton socks. Soft, breathable and durable for daily wear.',
+    stock: 80
+  },
+  {
+    id: 'c8',
+    name: 'Cotton Cap',
+    price: 50,
+    rating: 4.2,
+    category: 'clothes',
+    image: 'https://images.unsplash.com/photo-1588850561407-ed78c282e89b?w=400',
+    description: 'Lightweight cotton cap. Perfect for casual wear and sun protection.',
+    stock: 150
+  },
+  {
+    id: 'c9',
+    name: 'Fashion Scarf',
+    price: 199,
+    rating: 4.5,
+    category: 'clothes',
+    image: 'https://images.unsplash.com/photo-1520903920243-00d872a2d1c9?w=400',
+    description: 'Lightweight printed scarf. Perfect accessory for outfits or as a head wrap.',
+    stock: 60
+  },
+  {
+    id: 'c10',
+    name: 'Cotton Handkerchief',
+    price: 35,
+    rating: 4.0,
+    category: 'clothes',
+    image: 'https://images.unsplash.com/photo-1558171813-4c088753af8f?w=400',
+    description: 'Soft cotton handkerchief. Multipurpose - use as pocket square or daily wipe.',
+    stock: 200
+  },
 
   // Jewellery
   {
@@ -194,6 +234,46 @@ export const products: Product[] = [
     image: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=400',
     description: 'Organic quinoa - superfood rich in protein and fiber. 1kg pack.',
     stock: 50
+  },
+  {
+    id: 'f7',
+    name: 'Cream Biscuits Pack',
+    price: 100,
+    rating: 4.4,
+    category: 'food',
+    image: 'https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=400',
+    description: 'Crispy cream-filled biscuits. Perfect with tea or as a quick snack. 200g pack.',
+    stock: 120
+  },
+  {
+    id: 'f8',
+    name: 'Milk Chocolate Bar',
+    price: 50,
+    rating: 4.5,
+    category: 'food',
+    image: 'https://images.unsplash.com/photo-1511381939415-e44015466834?w=400',
+    description: 'Smooth milk chocolate. Rich and creamy taste. 50g bar.',
+    stock: 150
+  },
+  {
+    id: 'f9',
+    name: 'Assorted Cookies Tin',
+    price: 199,
+    rating: 4.6,
+    category: 'food',
+    image: 'https://images.unsplash.com/photo-1499636136210-6f4ee915583e?w=400',
+    description: 'Assorted butter cookies and biscuits. Great for gifting or snacking. 400g tin.',
+    stock: 80
+  },
+  {
+    id: 'f10',
+    name: 'Chocolate Cookies',
+    price: 35,
+    rating: 4.2,
+    category: 'food',
+    image: 'https://images.unsplash.com/photo-1607472586893-edb57bdc0e39?w=400',
+    description: 'Chocolate-flavored cookies. Crunchy and delicious. 100g pack.',
+    stock: 200
   }
 ];
 

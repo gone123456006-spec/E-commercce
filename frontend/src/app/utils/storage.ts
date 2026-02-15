@@ -19,7 +19,16 @@ export interface Order {
   items: CartItem[];
   address: Address;
   paymentMethod: 'cod' | 'gpay';
-  status: 'confirmed' | 'packed' | 'shipped' | 'delivered';
+  status: 'pending' | 'accepted' | 'out_for_delivery' | 'delivered' | 'cancelled';
+  paymentStatus: 'pending' | 'paid' | 'refunded';
+  acceptedAt?: string;
+  outForDeliveryAt?: string;
+  deliveredAt?: string;
+  cancelledAt?: string;
+  cancellationReason?: string;
+  refundStatus?: 'not_required' | 'pending' | 'processed';
+  deliveryAgentName?: string;
+  deliveryAgentPhone?: string;
   total: number;
 }
 
@@ -113,14 +122,32 @@ export const deleteAddress = (addressId: string): void => {
 // Order Operations
 export const getOrders = (): Order[] => {
   const orders = localStorage.getItem(ORDERS_KEY);
-  return orders ? JSON.parse(orders) : [];
+  const parsedOrders: any[] = orders ? JSON.parse(orders) : [];
+
+  // Backward compatibility for previously saved order statuses.
+  return parsedOrders.map((order) => {
+    let normalizedStatus: Order['status'] = order.status;
+    if (order.status === 'confirmed') normalizedStatus = 'pending';
+    if (order.status === 'packed') normalizedStatus = 'accepted';
+    if (order.status === 'shipped') normalizedStatus = 'out_for_delivery';
+
+    return {
+      ...order,
+      status: normalizedStatus,
+      paymentStatus: order.paymentStatus || (order.paymentMethod === 'gpay' ? 'paid' : 'pending'),
+      refundStatus: order.refundStatus || 'not_required',
+      deliveryAgentName: order.deliveryAgentName || 'Rider Team',
+      deliveryAgentPhone: order.deliveryAgentPhone || '+91 90000 00000'
+    };
+  });
 };
 
 export const createOrder = (
   items: CartItem[],
   address: Address,
   paymentMethod: 'cod' | 'gpay',
-  total: number
+  total: number,
+  options?: { paymentStatus?: Order['paymentStatus'] }
 ): Order => {
   const orders = getOrders();
   const newOrder: Order = {
@@ -129,11 +156,16 @@ export const createOrder = (
     items,
     address,
     paymentMethod,
-    status: 'confirmed',
+    status: 'pending',
+    paymentStatus: options?.paymentStatus || (paymentMethod === 'gpay' ? 'paid' : 'pending'),
+    refundStatus: 'not_required',
+    deliveryAgentName: 'Rider Team',
+    deliveryAgentPhone: '+91 90000 00000',
     total
   };
   orders.unshift(newOrder);
   localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
+  window.dispatchEvent(new Event('ordersUpdated'));
   return newOrder;
 };
 
@@ -147,7 +179,38 @@ export const updateOrderStatus = (orderId: string, status: Order['status']): voi
   const order = orders.find(o => o.id === orderId);
   if (order) {
     order.status = status;
+    if (status === 'accepted') {
+      order.acceptedAt = new Date().toISOString();
+    }
+    if (status === 'out_for_delivery') {
+      order.outForDeliveryAt = new Date().toISOString();
+    }
+    if (status === 'delivered') {
+      order.deliveredAt = new Date().toISOString();
+      if (order.paymentMethod === 'cod') {
+        order.paymentStatus = 'paid';
+      }
+    }
     localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
+    window.dispatchEvent(new Event('ordersUpdated'));
+  }
+};
+
+export const cancelOrder = (orderId: string, reason: string): void => {
+  const orders = getOrders();
+  const order = orders.find(o => o.id === orderId);
+  if (order) {
+    order.status = 'cancelled';
+    order.cancelledAt = new Date().toISOString();
+    order.cancellationReason = reason;
+    if (order.paymentStatus === 'paid') {
+      order.refundStatus = 'pending';
+      order.paymentStatus = 'refunded';
+    } else {
+      order.refundStatus = 'not_required';
+    }
+    localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
+    window.dispatchEvent(new Event('ordersUpdated'));
   }
 };
 

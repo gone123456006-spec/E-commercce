@@ -29,12 +29,7 @@ export function OrderConfirmation() {
     );
   }
 
-  const estimatedDelivery = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  });
+  const estimatedDelivery = '15 - 30 minutes';
 
   return (
     <div className="min-h-screen bg-yellow-50/40">
@@ -141,12 +136,12 @@ export function OrderConfirmation() {
             <div className="space-y-2 max-w-sm ml-auto">
               <div className="flex justify-between text-base md:text-lg">
                 <span className="text-gray-600">Subtotal:</span>
-                <span>₹{order.total - (order.total >= 1000 ? 0 : 50)}</span>
+                <span>₹{order.total >= 299 ? order.total : order.total - 39}</span>
               </div>
               <div className="flex justify-between text-base md:text-lg">
                 <span className="text-gray-600">Delivery:</span>
-                <span className={order.total >= 1000 ? 'text-green-600' : ''}>
-                  {order.total >= 1000 ? 'FREE' : '₹50'}
+                <span className={order.total >= 299 ? 'text-green-600' : ''}>
+                  {order.total >= 299 ? 'FREE' : '₹39'}
                 </span>
               </div>
               <div className="flex justify-between text-xl md:text-2xl border-t pt-2">

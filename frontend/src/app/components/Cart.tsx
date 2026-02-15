@@ -45,7 +45,9 @@ export function Cart() {
   };
 
   const subtotal = calculateSubtotal();
-  const deliveryCharge = subtotal > 0 ? (subtotal >= 1000 ? 0 : 50) : 0;
+  const FREE_DELIVERY_THRESHOLD = 299;
+  const DELIVERY_CHARGE = 39;
+  const deliveryCharge = subtotal > 0 ? (subtotal >= FREE_DELIVERY_THRESHOLD ? 0 : DELIVERY_CHARGE) : 0;
   const total = subtotal + deliveryCharge;
 
   if (cartItems.length === 0) {
@@ -150,9 +152,9 @@ export function Cart() {
                   </span>
                 </div>
 
-                {subtotal < 1000 && subtotal > 0 && (
+                {subtotal < FREE_DELIVERY_THRESHOLD && subtotal > 0 && (
                   <p className="text-xs md:text-sm text-gray-600 bg-yellow-50 p-2 md:p-3 rounded-lg border border-yellow-200">
-                    Add ₹{1000 - subtotal} more to get FREE delivery!
+                    Add ₹{FREE_DELIVERY_THRESHOLD - subtotal} more to get FREE delivery!
                   </p>
                 )}
 

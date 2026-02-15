@@ -37,24 +37,40 @@ export function LoginModal({ isOpen, onClose, onSuccess }: LoginModalProps) {
 
         setIsLoading(true);
         try {
-            const response = await fetch('http://localhost:5000/api/auth/send-otp', {
+            const response = await fetch('/api/auth/send-otp', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ mobile })
             });
 
-            const data = await response.json();
+            const text = await response.text();
+            let data: { message?: string } = {};
+            try {
+                data = text ? JSON.parse(text) : {};
+            } catch {
+                // Backend down or returned non-JSON - still show OTP step with dummy
+                toast.info('Use dummy OTP: 1234');
+                setIsLoading(false);
+                setStep('otp');
+                return;
+            }
 
             if (!response.ok) {
                 throw new Error(data.message || 'Failed to send OTP');
             }
 
-            console.log('OTP Data:', data); // For testing
-            toast.info(`OTP Sent! Check console/backend logs.`);
+            toast.info('OTP Sent! Use dummy OTP: 1234');
             setIsLoading(false);
             setStep('otp');
         } catch (error: any) {
-            toast.error(error.message);
+            // On network error, still allow OTP step
+            if (/failed to fetch|network/i.test(error.message || '')) {
+                toast.info('Backend offline. Use dummy OTP: 1234');
+                setStep('otp');
+                setOtp('1234');
+            } else {
+                toast.error(error.message);
+            }
             setIsLoading(false);
         }
     };
@@ -137,9 +153,28 @@ export function LoginModal({ isOpen, onClose, onSuccess }: LoginModalProps) {
                                     'Get OTP'
                                 )}
                             </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    if (mobile.length === 10) {
+                                        setStep('otp');
+                                        setOtp('1234');
+                                        toast.info('Use OTP: 1234');
+                                    } else {
+                                        toast.error('Enter 10-digit mobile first');
+                                    }
+                                }}
+                                className="w-full py-2 text-sm text-amber-700 hover:text-amber-800 font-medium border border-amber-300 rounded-lg hover:bg-amber-50"
+                            >
+                                Use demo OTP (1234) — skip Get OTP
+                            </button>
                         </form>
                     ) : (
                         <form onSubmit={handleVerifyOtp} className="space-y-4">
+                            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                                <p className="text-sm font-semibold text-amber-800">DUMMY OTP - USE NOW</p>
+                                <p className="text-2xl font-bold text-amber-700 mt-1">1234</p>
+                            </div>
                             <div>
                                 <label htmlFor="otp" className="block text-sm font-medium text-gray-700 mb-1">
                                     One Time Password
@@ -153,9 +188,16 @@ export function LoginModal({ isOpen, onClose, onSuccess }: LoginModalProps) {
                                         setOtp(val);
                                     }}
                                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all outline-none text-center text-lg tracking-widest"
-                                    placeholder="Enter 4 digit OTP"
+                                    placeholder="Enter 1234"
                                     autoFocus
                                 />
+                                <button
+                                    type="button"
+                                    onClick={() => setOtp('1234')}
+                                    className="mt-2 text-sm text-green-600 hover:text-green-700 font-medium"
+                                >
+                                    Use dummy OTP 1234
+                                </button>
                             </div>
 
                             <button
