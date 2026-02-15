@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Check, MapPin, CreditCard, Package, Loader2, Navigation } from 'lucide-react';
+import { Check, MapPin, CreditCard, Package, Loader2, Navigation, ChevronLeft } from 'lucide-react';
 import { getCart, getAddresses, saveAddress, createOrder, clearCart } from '../utils/storage';
 import { getProductById } from '../data/products';
 import { isWithinDeliveryRange, SHOP_LOCATION } from '../utils/location';
@@ -44,7 +44,7 @@ export function Checkout() {
     loadAddresses();
   }, [cartItems, navigate]);
 
-  // Auto-detect location and fetch address when on Address step
+  // Request user's live location (permission) and match with store location
   const checkLocation = useCallback(() => {
     if (!navigator.geolocation) {
       setLocationStatus('denied');
@@ -53,23 +53,17 @@ export function Checkout() {
     setLocationStatus('checking');
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        const { inRange, distanceKm: d } = isWithinDeliveryRange(
-          position.coords.latitude,
-          position.coords.longitude
-        );
+        const userLat = position.coords.latitude;
+        const userLng = position.coords.longitude;
+        const { inRange, distanceKm: d } = isWithinDeliveryRange(userLat, userLng);
         setDistanceKm(d);
-        setUserCoords({ lat: position.coords.latitude, lng: position.coords.longitude });
+        setUserCoords({ lat: userLat, lng: userLng });
         setLocationStatus(inRange ? 'in_range' : 'out_of_range');
       },
-      () => setLocationStatus('denied')
+      () => setLocationStatus('denied'),
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
   }, []);
-
-  useEffect(() => {
-    if (currentStep === 'address') {
-      checkLocation();
-    }
-  }, [currentStep, checkLocation]);
 
   // Auto-fetch address from coordinates when in range (once per session)
   useEffect(() => {
@@ -259,7 +253,16 @@ export function Checkout() {
   return (
     <div className="min-h-screen bg-yellow-50/40">
       <div className="max-w-7xl mx-auto px-4 py-4 md:py-8">
-        <h1 className="text-2xl md:text-4xl mb-4 md:mb-8">Checkout</h1>
+        <div className="flex items-center gap-3 mb-4 md:mb-8 relative z-[60] isolate">
+          <a
+            href="/cart"
+            className="flex items-center justify-center min-w-[44px] min-h-[44px] -ml-1 rounded-full text-gray-700 hover:bg-gray-200 active:bg-gray-300 transition-colors touch-manipulation cursor-pointer"
+            aria-label="Go back to cart"
+          >
+            <ChevronLeft className="w-8 h-8" strokeWidth={2.5} />
+          </a>
+          <h1 className="text-2xl md:text-4xl flex-1">Checkout</h1>
+        </div>
 
         {/* Step Indicator */}
         <div className="flex items-center justify-center mb-8 md:mb-12 overflow-x-auto px-4">
@@ -306,10 +309,15 @@ export function Checkout() {
                   locationStatus === 'out_of_range' || locationStatus === 'denied' ? 'bg-red-50 border-red-200' :
                   'bg-blue-50 border-blue-200'
                 }`}>
-                  {(locationStatus === 'checking' || locationStatus === 'idle') && (
+                  {locationStatus === 'checking' && (
                     <p className="text-sm md:text-base flex items-center gap-2">
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      Detecting your location from store...
+                      Detecting your location...
+                    </p>
+                  )}
+                  {locationStatus === 'idle' && (
+                    <p className="text-sm md:text-base text-gray-700">
+                      Click &quot;Use my current location&quot; below to verify delivery availability.
                     </p>
                   )}
                   {locationStatus === 'in_range' && distanceKm !== null && (

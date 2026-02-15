@@ -1,4 +1,4 @@
-import { Link, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { Home, Package, ShoppingCart, User, Menu, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { getCartCount } from '../utils/storage';
@@ -41,28 +41,28 @@ export function Navbar() {
   ];
 
   return (
-    <nav className="sticky top-0 z-50 bg-green-700 shadow-sm">
+    <nav className="sticky top-0 z-50 bg-green-700 shadow-sm pointer-events-auto">
       <div className="max-w-7xl mx-auto px-3 sm:px-4">
         <div className="flex items-center justify-between h-14 sm:h-16">
           {/* Logo - responsive sizing */}
-          <Link to="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity">
+          <a href="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity">
             <div className="flex-shrink-0 w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 flex items-center justify-center rounded-lg bg-yellow-400 text-green-800">
               <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
             </div>
             <span className="font-semibold text-base sm:text-lg md:text-xl text-yellow-400">
               Kiran Rasan
             </span>
-          </Link>
+          </a>
 
           {/* Desktop Navigation Links */}
           <div className="hidden md:flex items-center gap-4 lg:gap-6">
             {navLinks.map((link) => {
               const Icon = link.icon;
               return (
-                <Link
+                <a
                   key={link.path}
-                  to={link.path}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors relative ${
+                  href={link.path}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors relative no-underline ${
                     isActive(link.path) 
                       ? 'bg-green-600/80 text-yellow-400' 
                       : 'text-yellow-100 hover:bg-green-600/60'
@@ -75,7 +75,7 @@ export function Navbar() {
                       {link.badge > 9 ? '9+' : link.badge}
                     </span>
                   )}
-                </Link>
+                </a>
               );
             })}
           </div>
@@ -102,10 +102,10 @@ export function Navbar() {
             {navLinks.map((link) => {
               const Icon = link.icon;
               return (
-                <Link
+                <a
                   key={link.path}
-                  to={link.path}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors relative ${
+                  href={link.path}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors relative no-underline ${
                     isActive(link.path) 
                       ? 'bg-green-600/80 text-yellow-400' 
                       : 'text-yellow-100 hover:bg-green-600/60'
@@ -118,7 +118,7 @@ export function Navbar() {
                       {link.badge > 9 ? '9+' : link.badge}
                     </span>
                   )}
-                </Link>
+                </a>
               );
             })}
           </div>
