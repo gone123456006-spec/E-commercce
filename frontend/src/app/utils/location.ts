@@ -1,12 +1,12 @@
 /**
  * Shop location and delivery range configuration.
- * Store link: https://maps.app.goo.gl/7SLALfKvsfgSnzLv9
+ * Store link: https://maps.app.goo.gl/rkXeTJGY1FKZe8YN7
  * User's live location (with permission) is matched against this store; delivery allowed within deliveryRadiusKm.
  */
 export const SHOP_LOCATION = {
   latitude: 27.5942672,
   longitude: 91.869274,
-  mapsUrl: 'https://maps.app.goo.gl/7SLALfKvsfgSnzLv9',
+  mapsUrl: 'https://maps.app.goo.gl/rkXeTJGY1FKZe8YN7',
   deliveryRadiusKm: 6
 };
 
