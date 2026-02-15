@@ -1,13 +1,10 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Check, MapPin, CreditCard, Package, Loader2, Navigation, ChevronLeft } from 'lucide-react';
+import { Check, MapPin, CreditCard, Package, ChevronLeft } from 'lucide-react';
 import { getCart, getAddresses, saveAddress, createOrder, clearCart } from '../utils/storage';
 import { getProductById } from '../data/products';
-import { isWithinDeliveryRange, SHOP_LOCATION } from '../utils/location';
 import type { Address } from '../utils/storage';
 import { toast } from 'sonner';
-
-type LocationStatus = 'idle' | 'checking' | 'in_range' | 'out_of_range' | 'denied';
 
 type CheckoutStep = 'address' | 'review' | 'payment';
 
@@ -19,12 +16,6 @@ export function Checkout() {
   const [paymentMethod, setPaymentMethod] = useState<'cod' | 'gpay' | null>(null);
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-
-  const [locationStatus, setLocationStatus] = useState<LocationStatus>('idle');
-  const [distanceKm, setDistanceKm] = useState<number | null>(null);
-  const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [isFetchingAddress, setIsFetchingAddress] = useState(false);
-  const hasAutoFilledRef = useRef(false);
 
   const [newAddress, setNewAddress] = useState({
     name: '',
@@ -43,109 +34,6 @@ export function Checkout() {
     }
     loadAddresses();
   }, [cartItems, navigate]);
-
-  // Request user's live location (permission) and match with store location
-  const checkLocation = useCallback(() => {
-    if (!navigator.geolocation) {
-      setLocationStatus('denied');
-      return;
-    }
-    setLocationStatus('checking');
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const userLat = position.coords.latitude;
-        const userLng = position.coords.longitude;
-        const { inRange, distanceKm: d } = isWithinDeliveryRange(userLat, userLng);
-        setDistanceKm(d);
-        setUserCoords({ lat: userLat, lng: userLng });
-        setLocationStatus(inRange ? 'in_range' : 'out_of_range');
-      },
-      () => setLocationStatus('denied'),
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-    );
-  }, []);
-
-  // Auto-fetch address from coordinates when in range (once per session)
-  useEffect(() => {
-    if (locationStatus !== 'in_range' || !userCoords || hasAutoFilledRef.current) return;
-    hasAutoFilledRef.current = true;
-
-    const fetchAndFillAddress = async () => {
-      setIsFetchingAddress(true);
-      try {
-        const res = await fetch(
-          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${userCoords.lat}&lon=${userCoords.lng}`,
-          { headers: { 'Accept-Language': 'en' } }
-        );
-        const data = await res.json();
-        const addr = data?.address || {};
-        setNewAddress((prev) => ({
-          ...prev,
-          house: [addr.road, addr.suburb, addr.village].filter(Boolean).join(', ') || prev.house,
-          city: addr.city || addr.town || addr.county || addr.state_district || prev.city,
-          state: addr.state || prev.state,
-          pincode: addr.postcode || prev.pincode
-        }));
-        if (addresses.length === 0) setShowAddressForm(true);
-        toast.success('Address auto-filled from your location. Add name & mobile, then Save.');
-      } catch {
-        toast.info('Add your address manually');
-        setShowAddressForm(true);
-      }
-      setIsFetchingAddress(false);
-    };
-
-    fetchAndFillAddress();
-  }, [locationStatus, userCoords, addresses.length]);
-
-  const handleUseMyLocation = () => {
-    if (!navigator.geolocation) {
-      toast.error('Location is not supported');
-      return;
-    }
-    setIsFetchingAddress(true);
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { inRange, distanceKm: d } = isWithinDeliveryRange(
-          position.coords.latitude,
-          position.coords.longitude
-        );
-        setDistanceKm(d);
-        setLocationStatus(inRange ? 'in_range' : 'out_of_range');
-        if (!inRange) {
-          setIsFetchingAddress(false);
-          toast.error(`You're ${d.toFixed(1)}km from store. We deliver within 6km only.`);
-          return;
-        }
-        try {
-          const { lat, lng } = position.coords;
-          const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`,
-            { headers: { 'Accept-Language': 'en' } }
-          );
-          const data = await res.json();
-          const addr = data?.address || {};
-          setNewAddress((prev) => ({
-            ...prev,
-            house: [addr.road, addr.suburb, addr.village].filter(Boolean).join(', ') || prev.house,
-            city: addr.city || addr.town || addr.county || addr.state_district || prev.city,
-            state: addr.state || prev.state,
-            pincode: addr.postcode || prev.pincode
-          }));
-          setShowAddressForm(true);
-          toast.success('Address filled from your location');
-        } catch {
-          toast.error('Could not fetch address. Please enter manually.');
-        }
-        setIsFetchingAddress(false);
-      },
-      () => {
-        setLocationStatus('denied');
-        setIsFetchingAddress(false);
-        toast.error('Allow location access');
-      }
-    );
-  };
 
   const loadAddresses = () => {
     const savedAddresses = getAddresses();
@@ -204,43 +92,17 @@ export function Checkout() {
       return;
     }
 
-    // Verify delivery range (6km) using user's location
-    if (!navigator.geolocation) {
-      toast.error('Location access is required to verify delivery availability');
-      return;
-    }
-
     setIsProcessing(true);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { inRange, distanceKm } = isWithinDeliveryRange(
-          position.coords.latitude,
-          position.coords.longitude
-        );
-        if (!inRange) {
-          setIsProcessing(false);
-          toast.error(
-            `We deliver only within ${SHOP_LOCATION.deliveryRadiusKm}km of our store. Your location is ${distanceKm.toFixed(1)}km away.`
-          );
-          return;
-        }
-        // Within range - place order
-        const order = createOrder(cartItems, selectedAddress, paymentMethod, total, {
-          paymentStatus: paymentStatusOverride || (paymentMethod === 'gpay' ? 'paid' : 'pending')
-        });
-        clearCart();
-        window.dispatchEvent(new Event('cartUpdated'));
-        setIsProcessing(false);
-        navigate(`/order-confirmation/${order.id}`);
-      },
-      () => {
-        setIsProcessing(false);
-        toast.error('Please allow location access to verify we deliver to your area');
-      }
-    );
+    const order = createOrder(cartItems, selectedAddress, paymentMethod, total, {
+      paymentStatus: paymentStatusOverride || (paymentMethod === 'gpay' ? 'paid' : 'pending')
+    });
+    clearCart();
+    window.dispatchEvent(new Event('cartUpdated'));
+    setIsProcessing(false);
+    navigate(`/order-confirmation/${order.id}`);
   };
 
-  const canProceedToReview = selectedAddress !== null && locationStatus === 'in_range';
+  const canProceedToReview = selectedAddress !== null;
   const canProceedToPayment = selectedAddress !== null;
   const canPlaceOrder = selectedAddress !== null && paymentMethod !== null;
 
@@ -302,56 +164,6 @@ export function Checkout() {
             {currentStep === 'address' && (
               <div className="bg-white rounded-lg md:rounded-xl shadow-md p-4 md:p-6">
                 <h2 className="text-xl md:text-2xl mb-4 md:mb-6">Select Delivery Address</h2>
-
-                {/* Auto-detect location status */}
-                <div className={`mb-4 md:mb-6 p-4 rounded-lg border ${
-                  locationStatus === 'in_range' ? 'bg-green-50 border-green-200' :
-                  locationStatus === 'out_of_range' || locationStatus === 'denied' ? 'bg-red-50 border-red-200' :
-                  'bg-blue-50 border-blue-200'
-                }`}>
-                  {locationStatus === 'checking' && (
-                    <p className="text-sm md:text-base flex items-center gap-2">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Detecting your location...
-                    </p>
-                  )}
-                  {locationStatus === 'idle' && (
-                    <p className="text-sm md:text-base text-gray-700">
-                      Click &quot;Use my current location&quot; below to verify delivery availability.
-                    </p>
-                  )}
-                  {locationStatus === 'in_range' && distanceKm !== null && (
-                    <p className="text-sm md:text-base text-green-800">
-                      <Check className="inline w-4 h-4 mr-1" />
-                      <strong>You're within delivery range.</strong> {distanceKm.toFixed(1)} km from our store.
-                    </p>
-                  )}
-                  {locationStatus === 'out_of_range' && distanceKm !== null && (
-                    <p className="text-sm md:text-base text-red-800">
-                      <MapPin className="inline w-4 h-4 mr-1" />
-                      You're <strong>{distanceKm.toFixed(1)} km</strong> from our store. We deliver within {SHOP_LOCATION.deliveryRadiusKm}km only.
-                    </p>
-                  )}
-                  {locationStatus === 'denied' && (
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-sm md:text-base text-amber-800">Allow location access to verify delivery availability.</p>
-                      <button onClick={checkLocation} className="text-sm px-3 py-1 bg-amber-100 text-amber-800 rounded hover:bg-amber-200">Retry</button>
-                    </div>
-                  )}
-                  <p className="text-xs mt-2 text-gray-600">
-                    Store: <a href={SHOP_LOCATION.mapsUrl} target="_blank" rel="noopener noreferrer" className="text-green-600 hover:underline">View on map</a>
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleUseMyLocation}
-                  disabled={locationStatus === 'checking' || isFetchingAddress}
-                  className="w-full mb-4 px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {isFetchingAddress ? <Loader2 className="w-5 h-5 animate-spin" /> : <Navigation className="w-5 h-5" />}
-                  Use my current location (auto-fill address)
-                </button>
 
                 {addresses.length > 0 && (
                   <div className="space-y-3 md:space-y-4 mb-4 md:mb-6">

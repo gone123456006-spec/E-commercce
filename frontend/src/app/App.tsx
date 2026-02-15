@@ -13,7 +13,6 @@ import { AdminOrderDashboard } from './components/AdminOrderDashboard';
 import { CustomerOrders } from './components/CustomerOrders';
 
 import { AuthProvider } from './context/AuthContext';
-import { LocationProvider } from './context/LocationContext';
 import { Footer } from './components/Footer';
 import { MobileBottomNav } from './components/MobileBottomNav';
 
@@ -48,11 +47,9 @@ function AppRoutes() {
 export default function App() {
   return (
     <AuthProvider>
-      <LocationProvider>
-        <BrowserRouter>
-          <AppRoutes />
-        </BrowserRouter>
-      </LocationProvider>
+      <BrowserRouter>
+        <AppRoutes />
+      </BrowserRouter>
     </AuthProvider>
   );
 }

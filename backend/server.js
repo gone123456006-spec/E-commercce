@@ -5,7 +5,6 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import connectDB from './config/database.js';
 import authRoutes from './routes/authRoutes.js';
-import locationRoutes from './routes/locationRoutes.js';
 import addressRoutes from './routes/addressRoutes.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 
@@ -49,7 +48,6 @@ app.get('/', (req, res) => {
 
 // API Routes
 app.use('/api/auth', authRoutes);
-app.use('/api/location', locationRoutes);
 app.use('/api/address', addressRoutes);
 
 // Error Handling Middleware (must be after routes)
