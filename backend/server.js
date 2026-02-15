@@ -1,31 +1,73 @@
 import express from 'express';
-import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import helmet from 'helmet';
+import morgan from 'morgan';
+import connectDB from './config/database.js';
 import authRoutes from './routes/authRoutes.js';
+import locationRoutes from './routes/locationRoutes.js';
+import addressRoutes from './routes/addressRoutes.js';
+import { errorHandler, notFound } from './middleware/errorHandler.js';
 
+// Load environment variables
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
-app.use(cors());
+// Connect to Database
+connectDB();
+
+// Security Middleware
+app.use(helmet());
+
+// CORS Configuration
+app.use(cors({
+    origin: process.env.NODE_ENV === 'production'
+        ? process.env.FRONTEND_URL
+        : '*',
+    credentials: true
+}));
+
+// Body Parser Middleware
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// Database Connection
-mongoose.connect('mongodb://localhost:27017/ecommerce_db')
-    .then(() => console.log('✅ Connected to MongoDB'))
-    .catch((err) => console.error('❌ MongoDB Connection Error:', err));
+// Logging Middleware
+if (process.env.NODE_ENV === 'development') {
+    app.use(morgan('dev'));
+}
 
-// Routes
-app.use('/api/auth', authRoutes);
-
+// Health Check Route
 app.get('/', (req, res) => {
-    res.send('Ecommerce API is running...');
+    res.json({
+        message: 'Ecommerce API is running...',
+        version: '1.0.0',
+        status: 'healthy'
+    });
 });
+
+// API Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/location', locationRoutes);
+app.use('/api/address', addressRoutes);
+
+// Error Handling Middleware (must be after routes)
+app.use(notFound);
+app.use(errorHandler);
 
 // Start Server
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);
+    console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
+
+// Graceful Shutdown
+process.on('SIGTERM', () => {
+    console.log('SIGTERM signal received: closing HTTP server');
+    server.close(() => {
+        console.log('HTTP server closed');
+    });
+});
+
+export default app;

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Check, MapPin, CreditCard, Package, Loader2, Navigation } from 'lucide-react';
 import { getCart, getAddresses, saveAddress, createOrder, clearCart } from '../utils/storage';
@@ -22,7 +22,9 @@ export function Checkout() {
 
   const [locationStatus, setLocationStatus] = useState<LocationStatus>('idle');
   const [distanceKm, setDistanceKm] = useState<number | null>(null);
+  const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [isFetchingAddress, setIsFetchingAddress] = useState(false);
+  const hasAutoFilledRef = useRef(false);
 
   const [newAddress, setNewAddress] = useState({
     name: '',
@@ -42,7 +44,7 @@ export function Checkout() {
     loadAddresses();
   }, [cartItems, navigate]);
 
-  // Auto-detect location when on Address step
+  // Auto-detect location and fetch address when on Address step
   const checkLocation = useCallback(() => {
     if (!navigator.geolocation) {
       setLocationStatus('denied');
@@ -56,6 +58,7 @@ export function Checkout() {
           position.coords.longitude
         );
         setDistanceKm(d);
+        setUserCoords({ lat: position.coords.latitude, lng: position.coords.longitude });
         setLocationStatus(inRange ? 'in_range' : 'out_of_range');
       },
       () => setLocationStatus('denied')
@@ -67,6 +70,39 @@ export function Checkout() {
       checkLocation();
     }
   }, [currentStep, checkLocation]);
+
+  // Auto-fetch address from coordinates when in range (once per session)
+  useEffect(() => {
+    if (locationStatus !== 'in_range' || !userCoords || hasAutoFilledRef.current) return;
+    hasAutoFilledRef.current = true;
+
+    const fetchAndFillAddress = async () => {
+      setIsFetchingAddress(true);
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${userCoords.lat}&lon=${userCoords.lng}`,
+          { headers: { 'Accept-Language': 'en' } }
+        );
+        const data = await res.json();
+        const addr = data?.address || {};
+        setNewAddress((prev) => ({
+          ...prev,
+          house: [addr.road, addr.suburb, addr.village].filter(Boolean).join(', ') || prev.house,
+          city: addr.city || addr.town || addr.county || addr.state_district || prev.city,
+          state: addr.state || prev.state,
+          pincode: addr.postcode || prev.pincode
+        }));
+        if (addresses.length === 0) setShowAddressForm(true);
+        toast.success('Address auto-filled from your location. Add name & mobile, then Save.');
+      } catch {
+        toast.info('Add your address manually');
+        setShowAddressForm(true);
+      }
+      setIsFetchingAddress(false);
+    };
+
+    fetchAndFillAddress();
+  }, [locationStatus, userCoords, addresses.length]);
 
   const handleUseMyLocation = () => {
     if (!navigator.geolocation) {

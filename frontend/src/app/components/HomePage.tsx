@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Search, ChevronRight, ChevronLeft } from 'lucide-react';
+import { LocationSelector } from './LocationSelector';
+import { DeliveryBanner } from './DeliveryBanner';
 
 const categories = [
   {
@@ -59,6 +61,12 @@ export function HomePage() {
             </div>
           </form>
         </div>
+      </div>
+
+      {/* Location Components */}
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 mt-4">
+        <LocationSelector />
+        <DeliveryBanner />
       </div>
 
       {/* Banner A - Big Savings on Grains and Pulses */}
