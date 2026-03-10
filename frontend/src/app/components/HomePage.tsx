@@ -32,6 +32,97 @@ const categories = [
   }
 ];
 
+const snacksAndDrinksCategories = [
+  {
+    id: 'chips-namkeen',
+    name: 'Chips &\nNamkeen',
+    image: 'https://images.unsplash.com/photo-1568909344668-6f14a07b56a0?w=400&h=400&fit=crop'
+  },
+  {
+    id: 'sweets-chocolates',
+    name: 'Sweets &\nChocolates',
+    image: 'https://images.unsplash.com/photo-1548843268-de31c26284de?w=400&h=400&fit=crop'
+  },
+  {
+    id: 'drinks-juices',
+    name: 'Drinks &\nJuices',
+    image: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=400&h=400&fit=crop'
+  },
+  {
+    id: 'tea-coffee',
+    name: 'Tea, Coffee\n& Milk Drinks',
+    image: 'https://images.unsplash.com/photo-1559525839-b184a4d698c7?w=400&h=400&fit=crop'
+  },
+  {
+    id: 'instant-food',
+    name: 'Instant Food',
+    image: 'https://images.unsplash.com/photo-1598514982205-f36b96d1e8d4?w=400&h=400&fit=crop'
+  },
+  {
+    id: 'sauces-spreads',
+    name: 'Sauces &\nSpreads',
+    image: 'https://images.unsplash.com/photo-1528751014936-863e6e8a4a5b?w=400&h=400&fit=crop'
+  },
+  {
+    id: 'paan-corner',
+    name: 'Paan Corner',
+    image: 'https://images.unsplash.com/photo-1628169829377-5264b7bd1608?w=400&h=400&fit=crop'
+  },
+  {
+    id: 'ice-creams',
+    name: 'Ice Creams &\nMore',
+    image: 'https://images.unsplash.com/photo-1557142046-c704a3adf8f7?w=400&h=400&fit=crop'
+  }
+];
+
+
+
+
+
+
+const groceryAndKitchenCategories = [
+  {
+    id: 'vegetables-fruits',
+    name: 'Vegetables &\nFruits',
+    image: 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=400&h=400&fit=crop'
+  },
+  {
+    id: 'atta-rice-dal',
+    name: 'Atta, Rice &\nDal',
+    image: 'https://cdn.grofers.com/cdn-cgi/image/f=auto,fit=scale-down,q=70,metadata=none,w=270/app/images/products/sliding_image/481977a.jpg'
+  },
+  {
+    id: 'oil-ghee-masala',
+    name: 'Oil, Ghee &\nMasala',
+    image: 'https://cdn.grofers.com/cdn-cgi/image/f=auto,fit=scale-down,q=70,metadata=none,w=270/app/images/products/sliding_image/190a.jpg'
+  },
+  {
+    id: 'dairy-bread-eggs',
+    name: 'Dairy, Bread &\nEggs',
+    image: 'https://cdn.grofers.com/cdn-cgi/image/f=auto,fit=scale-down,q=70,metadata=none,w=270/app/images/products/sliding_image/14a.jpg'
+  },
+  {
+    id: 'bakery-biscuits',
+    name: 'Bakery &\nBiscuits',
+    image: 'https://cdn.grofers.com/cdn-cgi/image/f=auto,fit=scale-down,q=70,metadata=none,w=270/app/images/products/sliding_image/496979a.jpg'
+  },
+  {
+    id: 'dry-fruits-cereals',
+    name: 'Dry Fruits &\nCereals',
+    image: 'https://cdn.grofers.com/cdn-cgi/image/f=auto,fit=scale-down,q=70,metadata=none,w=270/app/images/products/sliding_image/105655a.jpg'
+  },
+  {
+    id: 'chicken-meat-fish',
+    name: 'Chicken,\nMeat & Fish',
+    image: 'https://images.unsplash.com/photo-1587593810167-a84920ea0781?w=400&h=400&fit=crop'
+  },
+  {
+    id: 'kitchenware-appliances',
+    name: 'Kitchenware &\nAppliances',
+    image: 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=400&h=400&fit=crop'
+  }
+];
+
 export function HomePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentBanner, setCurrentBanner] = useState(0);
@@ -62,7 +153,7 @@ export function HomePage() {
   return (
     <div className="min-h-screen bg-yellow-50/40">
       {/* Search Bar */}
-      <div className="bg-yellow-50/40 py-3 px-3 sm:py-4 sm:px-4">
+      <div className="sticky top-14 sm:top-16 z-40 py-3 px-3 sm:py-4 sm:px-4">
         <div className="max-w-xl mx-auto">
           <form onSubmit={handleSearch}>
             <div className="relative flex items-center bg-white rounded-full shadow-sm overflow-hidden">
@@ -88,18 +179,18 @@ export function HomePage() {
 
       {/* Auto-Sliding Banner Section */}
       <div className="w-full max-w-7xl mx-auto px-3 sm:px-4 py-3 sm:py-4 md:py-6">
-        <div className="relative group rounded-xl sm:rounded-2xl overflow-hidden shadow-lg bg-gray-100 h-[160px] sm:h-[240px] md:h-[300px] w-full">
+        <div className="relative group rounded-xl sm:rounded-2xl overflow-hidden shadow-lg bg-gray-100 h-[160px] sm:h-auto w-full">
           {banners.map((banner, idx) => (
             <Link
               key={idx}
               to={banner.link}
-              className={`absolute inset-0 transition-opacity duration-500 ease-in-out block ${currentBanner === idx ? 'opacity-100 z-10' : 'opacity-0 z-0'
-                }`}
+              className={`transition-opacity duration-500 ease-in-out block ${currentBanner === idx ? 'opacity-100 z-10' : 'opacity-0 z-0'
+                } ${idx === 0 ? 'sm:relative absolute inset-0' : 'absolute inset-0'}`}
             >
               <img
                 src={banner.src}
                 alt={`Banner ${idx + 1}`}
-                className="w-full h-full object-cover object-center"
+                className="w-full h-full sm:h-auto object-cover sm:object-top"
               />
             </Link>
           ))}
@@ -175,8 +266,35 @@ export function HomePage() {
         </div>
       </div>
 
+      {/* Snacks & Drinks Section */}
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 pb-6 sm:pb-8 md:pb-12">
+        <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-4 sm:mb-6 text-gray-900">
+          Snacks & Drinks
+        </h2>
+        <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3 sm:gap-4 md:gap-5">
+          {snacksAndDrinksCategories.map((category) => (
+            <Link
+              key={category.id}
+              to={`/category/${category.id}`}
+              className="flex flex-col items-center group touch-manipulation"
+            >
+              <div className="w-full aspect-square bg-[#EEF5F5] rounded-xl sm:rounded-2xl flex items-center justify-center overflow-hidden mb-2 sm:mb-3 group-hover:shadow-[0_4px_12px_rgba(0,0,0,0.05)] transition-all duration-300">
+                <img
+                  src={category.image}
+                  alt={category.name.replace('\n', ' ')}
+                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                />
+              </div>
+              <h3 className="text-[10px] sm:text-xs md:text-sm font-semibold text-center text-gray-800 leading-[1.2] whitespace-pre-line">
+                {category.name}
+              </h3>
+            </Link>
+          ))}
+        </div>
+      </div>
+
       {/* WhatsApp Promo Banner */}
-      <div className="w-full max-w-7xl mx-auto px-3 sm:px-4 pb-6 sm:pb-8 md:pb-12">
+      <div className="w-full max-w-7xl mx-auto px-3 sm:px-4 pb-6 sm:pb-8 md:pb-12 text-black">
         <a
           href="https://wa.me/918003759454"
           target="_blank"
@@ -202,7 +320,7 @@ export function HomePage() {
               />
               {/* Inner button */}
               <span
-                className="relative flex items-center gap-1 sm:gap-1.5 px-3 py-1 sm:px-4 sm:py-1.5 md:px-5 md:py-1.5 rounded-full text-white font-bold text-[10px] sm:text-xs md:text-sm"
+                className="relative flex items-center gap-0.5 sm:gap-1.5 px-2 py-0.5 sm:px-4 sm:py-1.5 md:px-5 md:py-1.5 rounded-full text-white font-bold text-[8px] sm:text-xs md:text-sm"
                 style={{
                   background: 'rgba(255,255,255,0.15)',
                   backdropFilter: 'blur(6px)',
@@ -212,7 +330,7 @@ export function HomePage() {
                 }}
               >
                 {/* WhatsApp icon */}
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 flex-shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-2.5 h-2.5 sm:w-4 sm:h-4 md:w-5 md:h-5 flex-shrink-0">
                   <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
                 </svg>
                 <span style={{ color: '#fff', WebkitTextFillColor: '#fff', animation: 'whatsapp-shimmer 3.5s linear infinite' }}>
@@ -221,25 +339,62 @@ export function HomePage() {
               </span>
             </div>
           </div>
-
-          {/* Keyframes injected via style tag */}
-          <style>{`
-            @keyframes whatsapp-ping {
-              0%   { transform: scale(1);   opacity: 0.6; }
-              70%  { transform: scale(2.2); opacity: 0; }
-              100% { transform: scale(2.2); opacity: 0; }
-            }
-            @keyframes whatsapp-bounce {
-              0%, 100% { transform: translateY(0px); }
-              50%       { transform: translateY(-6px); }
-            }
-            @keyframes whatsapp-shimmer {
-              0%   { background-position: 200% center; }
-              100% { background-position: -200% center; }
-            }
-          `}</style>
         </a>
       </div>
+
+      <style>{`
+        @keyframes whatsapp-ping {
+          0%   { transform: scale(1);   opacity: 0.6; }
+          70%  { transform: scale(2.2); opacity: 0; }
+          100% { transform: scale(2.2); opacity: 0; }
+        }
+        @keyframes whatsapp-bounce {
+          0%, 100% { transform: translateY(0px); }
+          50%       { transform: translateY(-6px); }
+        }
+        @keyframes whatsapp-shimmer {
+          0%   { background-position: 200% center; }
+          100% { background-position: -200% center; }
+        }
+      `}</style>
+
+
+
+
+
+
+
+
+
+      {/* Grocery & Kitchen Section */}
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 pb-6 sm:pb-8 md:pb-12">
+        <div className="w-full bg-[#fae1e3] rounded-[32px] sm:rounded-[48px] p-6 sm:p-8 md:p-12 shadow-sm">
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-6 sm:mb-8 text-gray-900">
+            Grocery & Kitchen
+          </h2>
+          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3 sm:gap-4 md:gap-5">
+            {groceryAndKitchenCategories.map((category) => (
+              <Link
+                key={category.id}
+                to={`/category/${category.id}`}
+                className="flex flex-col items-center group touch-manipulation"
+              >
+                <div className="w-full aspect-square bg-white/60 rounded-xl sm:rounded-2xl flex items-center justify-center overflow-hidden mb-2 sm:mb-3 group-hover:shadow-[0_4px_12px_rgba(0,0,0,0.05)] transition-all duration-300">
+                  <img
+                    src={category.image}
+                    alt={category.name.replace('\n', ' ')}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                  />
+                </div>
+                <h3 className="text-[10px] sm:text-xs md:text-sm font-semibold text-center text-gray-800 leading-[1.2] whitespace-pre-line">
+                  {category.name}
+                </h3>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </div>
+
 
 
       {/* Features Section */}
@@ -278,6 +433,6 @@ export function HomePage() {
           </div>
         </div>
       </div>
-    </div>
+    </div >
   );
 }
