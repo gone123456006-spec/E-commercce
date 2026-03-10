@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { BarChart3, Download, Package, Search, Bell, ChevronRight } from 'lucide-react';
 import { getProductById } from '../data/products';
@@ -75,15 +75,27 @@ export function Orders() {
   const [paymentFilter, setPaymentFilter] = useState<'all' | 'pending' | 'paid' | 'refunded'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | Order['status']>('all');
 
+  const [newOrderId, setNewOrderId] = useState<string | null>(null);
+  const prevCountRef = useRef(0);
+
   useEffect(() => {
-    const load = () => setOrders(getOrders());
+    const load = () => {
+      const latest = getOrders();
+      prevCountRef.current = latest.length;
+      setOrders(latest);
+    };
     load();
 
     const onOrdersUpdated = () => {
       const latest = getOrders();
-      if (latest.length > orders.length) {
-        toast.success('New order received');
+      const prevCount = prevCountRef.current;
+      if (latest.length > prevCount) {
+        const added = latest[0]; // Newest first
+        toast.success("It's Done! New order placed.", { duration: 4000 });
+        setNewOrderId(added?.id || null);
+        setTimeout(() => setNewOrderId(null), 3000);
       }
+      prevCountRef.current = latest.length;
       setOrders(latest);
     };
 
@@ -93,7 +105,7 @@ export function Orders() {
       window.removeEventListener('ordersUpdated', onOrdersUpdated);
       window.removeEventListener('storage', onOrdersUpdated);
     };
-  }, [orders.length]);
+  }, []);
 
   const filteredOrders = useMemo(() => {
     return orders.filter((order) => {
@@ -357,7 +369,18 @@ export function Orders() {
             {pendingOrders.length === 0 && <p className="text-gray-500">No pending orders.</p>}
             <div className="space-y-3">
               {pendingOrders.map((order) => (
-                <div key={order.id}>
+                <div
+                  key={order.id}
+                  className={`rounded-lg transition-all duration-500 ${
+                    newOrderId === order.id ? 'ring-2 ring-green-500 bg-green-50/50 animate-pulse' : ''
+                  }`}
+                  style={newOrderId === order.id ? { animationDuration: '1.5s' } : undefined}
+                >
+                  {newOrderId === order.id && (
+                    <div className="text-sm font-semibold text-green-600 mb-2 flex items-center gap-1">
+                      <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-ping" /> It&apos;s Done! New order
+                    </div>
+                  )}
                   {renderOrderRow(order)}
                   <div className="flex flex-wrap gap-2 mt-2">
                     <button onClick={() => { updateOrderStatus(order.id, 'accepted'); toast.success('Order accepted'); }} className="px-3 py-1.5 text-sm bg-green-600 text-white rounded">Accept</button>

@@ -55,8 +55,10 @@ export function Checkout() {
   };
 
   const { subtotal, deliveryCharge, total } = calculateTotal();
+
+  // Dynamic QR: encodes UPI deep link with current order total so scan shows correct amount
   const gpayQrUrl = `https://quickchart.io/qr?size=320&text=${encodeURIComponent(
-    `upi://pay?pa=shopzone@okaxis&pn=ShopZone&am=${total}&cu=INR&tn=ShopZone%20Order%20Payment`
+    `upi://pay?pa=shyamroaster-1@okicici&pn=Shyam%20Roaster&am=${total}&cu=INR&tn=Kiran%20Rasan%20Order%20Payment`
   )}`;
 
   const handleAddAddress = () => {
@@ -403,7 +405,7 @@ export function Checkout() {
                     <h3 className="text-base md:text-lg mb-2 text-green-800">Scan & Pay with Google Pay (UPI)</h3>
                     <img
                       src={gpayQrUrl}
-                      alt="Google Pay UPI QR"
+                      alt={`Google Pay UPI QR - Pay ₹${total}`}
                       className="w-56 h-56 md:w-72 md:h-72 object-contain mx-auto rounded-lg border bg-white"
                     />
                     <p className="text-xs md:text-sm text-gray-600 mt-3 text-center">

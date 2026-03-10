@@ -8,6 +8,7 @@ import type { Order } from '../utils/storage';
 export function OrderConfirmation() {
   const { orderId } = useParams<{ orderId: string }>();
   const [order, setOrder] = useState<Order | null>(null);
+  const [showDone, setShowDone] = useState(false);
 
   useEffect(() => {
     if (orderId) {
@@ -15,6 +16,13 @@ export function OrderConfirmation() {
       setOrder(foundOrder || null);
     }
   }, [orderId]);
+
+  useEffect(() => {
+    if (order) {
+      const t = setTimeout(() => setShowDone(true), 100);
+      return () => clearTimeout(t);
+    }
+  }, [order]);
 
   if (!order) {
     return (
@@ -34,14 +42,33 @@ export function OrderConfirmation() {
   return (
     <div className="min-h-screen bg-yellow-50/40">
       <div className="max-w-4xl mx-auto px-4 py-4 md:py-8">
-        {/* Success Animation */}
-        <div className="text-center mb-6 md:mb-8">
+        {/* Success Animation - It's Done! */}
+        <div
+          className={`text-center mb-6 md:mb-8 transition-all duration-700 ease-out ${
+            showDone ? 'opacity-100 scale-100' : 'opacity-0 scale-75'
+          }`}
+        >
           <div className="inline-block relative">
-            <CheckCircle className="w-16 h-16 md:w-24 md:h-24 text-green-500 animate-bounce" />
+            <div className="relative order-done-check">
+              <CheckCircle className="w-20 h-20 md:w-28 md:h-28 text-green-500" />
+            </div>
           </div>
-          <h1 className="text-2xl md:text-3xl lg:text-4xl mt-3 md:mt-4 mb-2">Order Confirmed!</h1>
-          <p className="text-base md:text-lg lg:text-xl text-gray-600 px-4">
-            Thank you for your order. We'll send you a confirmation message shortly.
+          <div
+            className={`mt-4 mb-2 transition-all duration-500 delay-300 ${
+              showDone ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+            }`}
+          >
+            <span className="inline-block px-4 py-1.5 rounded-full bg-green-100 text-green-700 text-sm font-semibold mb-3">
+              It&apos;s Done!
+            </span>
+            <h1 className="text-2xl md:text-3xl lg:text-4xl mt-2 mb-2">Order Placed Successfully</h1>
+          </div>
+          <p
+            className={`text-base md:text-lg lg:text-xl text-gray-600 px-4 transition-all duration-500 delay-500 ${
+              showDone ? 'opacity-100' : 'opacity-0'
+            }`}
+          >
+            Thank you for your order. We&apos;ll send you a confirmation message shortly.
           </p>
         </div>
 

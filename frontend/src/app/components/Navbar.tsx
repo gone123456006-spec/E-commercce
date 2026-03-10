@@ -46,12 +46,11 @@ export function Navbar() {
         <div className="flex items-center justify-between h-14 sm:h-16">
           {/* Logo - responsive sizing */}
           <a href="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity">
-            <div className="flex-shrink-0 w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 flex items-center justify-center rounded-lg bg-yellow-400 text-green-800">
-              <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
-            </div>
-            <span className="font-semibold text-base sm:text-lg md:text-xl text-yellow-400">
-              Kiran Rasan
-            </span>
+            <img
+              src="/assets/images/header-logo.png"
+              alt="Hover Technology"
+              className="h-8 sm:h-10 md:h-12 w-auto object-contain"
+            />
           </a>
 
           {/* Desktop Navigation Links */}
@@ -62,11 +61,10 @@ export function Navbar() {
                 <a
                   key={link.path}
                   href={link.path}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors relative no-underline ${
-                    isActive(link.path) 
-                      ? 'bg-green-600/80 text-yellow-400' 
-                      : 'text-yellow-100 hover:bg-green-600/60'
-                  }`}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors relative no-underline ${isActive(link.path)
+                    ? 'bg-green-600/80 text-yellow-400'
+                    : 'text-yellow-100 hover:bg-green-600/60'
+                    }`}
                 >
                   <Icon className="w-5 h-5" />
                   <span>{link.label}</span>
@@ -105,11 +103,10 @@ export function Navbar() {
                 <a
                   key={link.path}
                   href={link.path}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors relative no-underline ${
-                    isActive(link.path) 
-                      ? 'bg-green-600/80 text-yellow-400' 
-                      : 'text-yellow-100 hover:bg-green-600/60'
-                  }`}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors relative no-underline ${isActive(link.path)
+                    ? 'bg-green-600/80 text-yellow-400'
+                    : 'text-yellow-100 hover:bg-green-600/60'
+                    }`}
                 >
                   <Icon className="w-6 h-6" />
                   <span className="text-lg">{link.label}</span>
