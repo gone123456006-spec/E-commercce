@@ -4,15 +4,30 @@ import { products } from '../data/products';
 import { addToCart } from '../utils/storage';
 import { toast } from 'sonner';
 
-const categoryNames = {
+const categoryNames: Record<string, string> = {
   clothes: 'Clothes',
   jewellery: 'Jewellery',
-  food: 'Food'
+  food: 'Food',
+  'chips-namkeen': 'Chips & Namkeen',
+  'sweets-chocolates': 'Sweets & Chocolates',
+  'drinks-juices': 'Drinks & Juices',
+  'tea-coffee': 'Tea, Coffee & Milk Drinks',
+  'instant-food': 'Instant Food',
+  'sauces-spreads': 'Sauces & Spreads',
+  'paan-corner': 'Paan Corner',
+  'ice-creams': 'Ice Creams & More',
+  'energy-drinks': 'Energy & Sports Drinks',
+  'biscuits-cookies': 'Biscuits & Cookies',
+  'dry-snacks': 'Dry Snacks & Toast',
+  'ready-to-eat': 'Ready to Eat'
 };
 
 export function CategoryPage() {
   const { category } = useParams<{ category: string }>();
   const categoryProducts = products.filter(p => p.category === category);
+
+  const displayCategoryName = categoryNames[category as string] ||
+    (category ? category.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') : 'Category');
 
   const handleAddToCart = (productId: string, productName: string) => {
     addToCart(productId, 1);
@@ -27,13 +42,13 @@ export function CategoryPage() {
         <div className="flex items-center gap-2 text-sm md:text-base text-gray-600 mb-4 md:mb-6">
           <Link to="/" className="hover:text-blue-600">Home</Link>
           <span>/</span>
-          <span className="text-gray-900">{categoryNames[category as keyof typeof categoryNames]}</span>
+          <span className="text-gray-900">{displayCategoryName}</span>
         </div>
 
         {/* Page Header */}
         <div className="mb-4 sm:mb-6 md:mb-8">
           <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl mb-1 sm:mb-2">
-            {categoryNames[category as keyof typeof categoryNames]}
+            {displayCategoryName}
           </h1>
           <p className="text-sm sm:text-base md:text-lg lg:text-xl text-gray-600">
             {categoryProducts.length} products available

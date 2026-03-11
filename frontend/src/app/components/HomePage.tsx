@@ -123,6 +123,49 @@ const groceryAndKitchenCategories = [
   }
 ];
 
+const beautyAndPersonalCareCategories = [
+  {
+    id: 'bath-body',
+    name: 'Bath & Body',
+    image: 'https://images.unsplash.com/photo-1629363447385-a7b37db457fc?w=400&h=400&fit=crop'
+  },
+  {
+    id: 'hair',
+    name: 'Hair',
+    image: 'https://images.unsplash.com/photo-1526947425960-945c6e72858f?w=400&h=400&fit=crop'
+  },
+  {
+    id: 'skin-face',
+    name: 'Skin & Face',
+    image: 'https://images.unsplash.com/photo-1556228578-0d85b1a4d571?w=400&h=400&fit=crop'
+  },
+  {
+    id: 'beauty-cosmetics',
+    name: 'Beauty &\nCosmetics',
+    image: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=400&h=400&fit=crop'
+  },
+  {
+    id: 'feminine-hygiene',
+    name: 'Feminine\nHygiene',
+    image: 'https://images.unsplash.com/photo-1620608643809-5626292376fb?w=400&h=400&fit=crop'
+  },
+  {
+    id: 'baby-care',
+    name: 'Baby Care',
+    image: 'https://images.unsplash.com/photo-1555252333-9f8e92e65df9?w=400&h=400&fit=crop'
+  },
+  {
+    id: 'health-pharma',
+    name: 'Health &\nPharma',
+    image: 'https://images.unsplash.com/photo-1584308666744-24d5e169ddef?w=400&h=400&fit=crop'
+  },
+  {
+    id: 'sexual-wellness',
+    name: 'Sexual\nWellness',
+    image: 'https://images.unsplash.com/photo-1614850715649-1d0106293cb1?w=400&h=400&fit=crop'
+  }
+];
+
 export function HomePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentBanner, setCurrentBanner] = useState(0);
@@ -367,35 +410,58 @@ export function HomePage() {
 
 
       {/* Grocery & Kitchen Section */}
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 pb-6 sm:pb-8 md:pb-12">
-        <div className="w-full bg-[#fae1e3] rounded-[32px] sm:rounded-[48px] p-6 sm:p-8 md:p-12 shadow-sm">
-          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-6 sm:mb-8 text-gray-900">
-            Grocery & Kitchen
-          </h2>
-          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3 sm:gap-4 md:gap-5">
-            {groceryAndKitchenCategories.map((category) => (
-              <Link
-                key={category.id}
-                to={`/category/${category.id}`}
-                className="flex flex-col items-center group touch-manipulation"
-              >
-                <div className="w-full aspect-square bg-white/60 rounded-xl sm:rounded-2xl flex items-center justify-center overflow-hidden mb-2 sm:mb-3 group-hover:shadow-[0_4px_12px_rgba(0,0,0,0.05)] transition-all duration-300">
-                  <img
-                    src={category.image}
-                    alt={category.name.replace('\n', ' ')}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                  />
-                </div>
-                <h3 className="text-[10px] sm:text-xs md:text-sm font-semibold text-center text-gray-800 leading-[1.2] whitespace-pre-line">
-                  {category.name}
-                </h3>
-              </Link>
-            ))}
-          </div>
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 pb-6 sm:pb-8 md:pb-12 text-black">
+        <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-4 sm:mb-6 text-gray-900">
+          Grocery & Kitchen
+        </h2>
+        <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3 sm:gap-4 md:gap-5">
+          {groceryAndKitchenCategories.map((category) => (
+            <Link
+              key={category.id}
+              to={`/category/${category.id}`}
+              className="flex flex-col items-center group touch-manipulation"
+            >
+              <div className="w-full aspect-square bg-[#FDF4F5] rounded-xl sm:rounded-2xl flex items-center justify-center overflow-hidden mb-2 sm:mb-3 group-hover:shadow-[0_4px_12px_rgba(0,0,0,0.05)] transition-all duration-300">
+                <img
+                  src={category.image}
+                  alt={category.name.replace('\n', ' ')}
+                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                />
+              </div>
+              <h3 className="text-[10px] sm:text-xs md:text-sm font-semibold text-center text-gray-800 leading-[1.2] whitespace-pre-line">
+                {category.name}
+              </h3>
+            </Link>
+          ))}
         </div>
       </div>
 
-
+      {/* Beauty & Personal Care Section */}
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 pb-6 sm:pb-8 md:pb-12 text-black">
+        <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-4 sm:mb-6 text-gray-900">
+          Beauty & Personal Care
+        </h2>
+        <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3 sm:gap-4 md:gap-5">
+          {beautyAndPersonalCareCategories.map((category) => (
+            <Link
+              key={category.id}
+              to={`/category/${category.id}`}
+              className="flex flex-col items-center group touch-manipulation"
+            >
+              <div className="w-full aspect-square bg-[#EEF5F5] rounded-xl sm:rounded-2xl flex items-center justify-center overflow-hidden mb-2 sm:mb-3 group-hover:shadow-[0_4px_12px_rgba(0,0,0,0.05)] transition-all duration-300">
+                <img
+                  src={category.image}
+                  alt={category.name.replace('\n', ' ')}
+                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                />
+              </div>
+              <h3 className="text-[10px] sm:text-xs md:text-sm font-semibold text-center text-gray-800 leading-[1.2] whitespace-pre-line">
+                {category.name}
+              </h3>
+            </Link>
+          ))}
+        </div>
+      </div>
 
       {/* Features Section */}
       <div className="bg-yellow-50/40 py-6 sm:py-8 md:py-16">
