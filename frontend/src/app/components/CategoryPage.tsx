@@ -1,6 +1,7 @@
+import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Star, ShoppingCart } from 'lucide-react';
-import { products } from '../data/products';
+import { getProducts } from '../data/products';
 import { addToCart } from '../utils/storage';
 import { toast } from 'sonner';
 
@@ -24,7 +25,16 @@ const categoryNames: Record<string, string> = {
 
 export function CategoryPage() {
   const { category } = useParams<{ category: string }>();
-  const categoryProducts = products.filter(p => p.category === category);
+  const [, setProductVersion] = useState(0);
+  const categoryProducts = getProducts()
+    .filter((p) => p.category === category)
+    .sort((a, b) => {
+      const aCustom = a.id.startsWith('custom_') ? 1 : 0;
+      const bCustom = b.id.startsWith('custom_') ? 1 : 0;
+      if (aCustom !== bCustom) return bCustom - aCustom;
+      return b.rating - a.rating || a.price - b.price;
+    });
+  const [visibleCount, setVisibleCount] = useState(20);
 
   const displayCategoryName = categoryNames[category as string] ||
     (category ? category.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') : 'Category');
@@ -34,6 +44,29 @@ export function CategoryPage() {
     toast.success(`${productName} added to cart!`);
     window.dispatchEvent(new Event('cartUpdated'));
   };
+
+  useEffect(() => {
+    setVisibleCount(20);
+  }, [category]);
+
+  useEffect(() => {
+    const onProductsUpdated = () => setProductVersion((v) => v + 1);
+    window.addEventListener('productsUpdated', onProductsUpdated);
+    return () => window.removeEventListener('productsUpdated', onProductsUpdated);
+  }, []);
+
+  useEffect(() => {
+    const onScroll = () => {
+      if (visibleCount >= categoryProducts.length) return;
+      const scrollPosition = window.innerHeight + window.scrollY;
+      const triggerPosition = document.body.offsetHeight - 260;
+      if (scrollPosition >= triggerPosition) {
+        setVisibleCount((prev) => Math.min(prev + 20, categoryProducts.length));
+      }
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [categoryProducts.length, visibleCount]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -57,7 +90,7 @@ export function CategoryPage() {
 
         {/* Product Grid - 3 cards per row on mobile, responsive */}
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
-          {categoryProducts.map((product) => (
+          {categoryProducts.slice(0, visibleCount).map((product) => (
             <div
               key={product.id}
               className="bg-white rounded-xl shadow-md hover:shadow-lg active:shadow-md transition-all duration-300 overflow-hidden group flex flex-col border border-gray-100 min-w-0"

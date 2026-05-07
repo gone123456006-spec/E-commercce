@@ -9,6 +9,32 @@ export interface Product {
   stock: number;
 }
 
+const ADMIN_CARD_EDITS_KEY = 'admin_dashboard_card_edits';
+const ADMIN_CUSTOM_CARDS_KEY = 'admin_dashboard_custom_cards';
+const ADMIN_DELETED_CARDS_KEY = 'admin_dashboard_deleted_cards';
+
+interface ProductOverrideShape {
+  name?: string;
+  image?: string;
+  category?: string;
+  description?: string;
+  stock?: number;
+  price?: number;
+  unit?: string;
+  unitValue?: number;
+}
+
+interface AdminCustomCardShape {
+  productId?: string;
+  name?: string;
+  image?: string;
+  category?: string;
+  description?: string;
+  stock?: number;
+  price?: number;
+  quantitySold?: number;
+}
+
 export const products: Product[] = [
   // Clothes
   {
@@ -2858,17 +2884,102 @@ export const products: Product[] = [
   }
 ];
 
+function getProductOverrides(): Record<string, ProductOverrideShape> {
+  if (typeof window === 'undefined') return {};
+  const runtimeOverrides = (window as any).__ADMIN_PRODUCT_OVERRIDES__;
+  if (runtimeOverrides && typeof runtimeOverrides === 'object') {
+    return runtimeOverrides as Record<string, ProductOverrideShape>;
+  }
+  try {
+    const raw = localStorage.getItem(ADMIN_CARD_EDITS_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function getCustomCards(): AdminCustomCardShape[] {
+  if (typeof window === 'undefined') return [];
+  const runtimeCards = (window as any).__ADMIN_CUSTOM_CARDS__;
+  if (Array.isArray(runtimeCards)) {
+    return runtimeCards as AdminCustomCardShape[];
+  }
+  try {
+    const raw = localStorage.getItem(ADMIN_CUSTOM_CARDS_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? (parsed as AdminCustomCardShape[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function getDeletedCardIds(): Set<string> {
+  if (typeof window === 'undefined') return new Set();
+  const runtimeDeleted = (window as any).__ADMIN_DELETED_PRODUCT_IDS__;
+  if (Array.isArray(runtimeDeleted)) {
+    return new Set(runtimeDeleted.filter((id) => typeof id === 'string' && id.trim()));
+  }
+  try {
+    const raw = localStorage.getItem(ADMIN_DELETED_CARDS_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(parsed)) return new Set();
+    return new Set(parsed.filter((id) => typeof id === 'string' && id.trim()));
+  } catch {
+    return new Set();
+  }
+}
+
+export const getProducts = (): Product[] => {
+  const overrides = getProductOverrides();
+  const deletedIds = getDeletedCardIds();
+  const baseProducts = products.map((product) => {
+    const override = overrides[product.id];
+    if (!override) return product;
+    return {
+      ...product,
+      name: typeof override.name === 'string' && override.name.trim() ? override.name : product.name,
+      image: typeof override.image === 'string' && override.image.trim() ? override.image : product.image,
+      category: typeof override.category === 'string' && override.category.trim() ? override.category : product.category,
+      description: typeof override.description === 'string' && override.description.trim() ? override.description : product.description,
+      stock: typeof override.stock === 'number' && Number.isFinite(override.stock) ? override.stock : product.stock,
+      price: typeof override.price === 'number' && Number.isFinite(override.price) ? override.price : product.price
+    };
+  });
+
+  const customProducts = getCustomCards()
+    .map((card) => {
+      const id = typeof card.productId === 'string' && card.productId.trim() ? card.productId : '';
+      const name = typeof card.name === 'string' && card.name.trim() ? card.name : '';
+      const category = typeof card.category === 'string' && card.category.trim() ? card.category : '';
+      if (!id || !name || !category) return null;
+      return {
+        id,
+        name,
+        price: typeof card.price === 'number' && Number.isFinite(card.price) ? card.price : 0,
+        rating: 5,
+        category,
+        image: typeof card.image === 'string' ? card.image : '',
+        description: typeof card.description === 'string' ? card.description : '',
+        stock: typeof card.stock === 'number' && Number.isFinite(card.stock) ? card.stock : 0
+      } as Product;
+    })
+    .filter((item): item is Product => Boolean(item))
+    .filter((product) => !deletedIds.has(product.id));
+
+  return [...customProducts, ...baseProducts.filter((product) => !deletedIds.has(product.id))];
+};
+
 export const getProductById = (id: string): Product | undefined => {
-  return products.find(p => p.id === id);
+  return getProducts().find(p => p.id === id);
 };
 
 export const getProductsByCategory = (category: string): Product[] => {
-  return products.filter(p => p.category === category);
+  return getProducts().filter(p => p.category === category);
 };
 
 export const searchProducts = (query: string): Product[] => {
   const lowerQuery = query.toLowerCase();
-  return products.filter(p =>
+  return getProducts().filter(p =>
     p.name.toLowerCase().includes(lowerQuery) ||
     p.description.toLowerCase().includes(lowerQuery) ||
     p.category.toLowerCase().includes(lowerQuery)

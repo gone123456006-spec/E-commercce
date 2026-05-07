@@ -1,9 +1,127 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronRight, Package } from 'lucide-react';
+import { ChevronRight, Package, Download } from 'lucide-react';
 import { getOrders } from '../utils/storage';
 import { getProductById } from '../data/products';
 import type { Order } from '../utils/storage';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+
+function fmtDate(dateIso?: string) {
+  if (!dateIso) return '-';
+  return new Date(dateIso).toLocaleString('en-IN', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
+function downloadInvoice(order: Order) {
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4'
+  });
+
+  // Theme Colors
+  const primaryColor = [35, 47, 62]; // Amazon Navy
+  const textColor = [51, 51, 51]; // Dark Gray
+  const lightGray = [245, 245, 245];
+
+  // Header Section
+  doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+  doc.rect(0, 0, 210, 40, 'F');
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(24);
+  doc.setFont('helvetica', 'bold');
+  doc.text('GajuStore', 14, 25);
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Tax Invoice/Bill of Supply', 196, 25, { align: 'right' });
+
+  // Order Details Section
+  doc.setTextColor(textColor[0], textColor[1], textColor[2]);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Order Details', 14, 55);
+
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Order ID: ${order.id}`, 14, 62);
+  doc.text(`Order Date: ${fmtDate(order.date)}`, 14, 68);
+  doc.text(`Invoice Date: ${fmtDate(new Date().toISOString())}`, 14, 74);
+
+  // Billing / Delivery Address Box
+  doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
+  doc.rect(120, 48, 76, 32, 'F');
+
+  doc.setFont('helvetica', 'bold');
+  doc.text('Delivery Address:', 124, 55);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`${order.address.name}`, 124, 61);
+  doc.text(`${order.address.house}`, 124, 67);
+  doc.text(`${order.address.city}, ${order.address.state} - ${order.address.pincode}`, 124, 73);
+  doc.text(`Phone: ${order.address.mobile}`, 124, 79);
+
+  // Table Data Preparation
+  const tableData: any[] = [];
+  let index = 1;
+  order.items.forEach((item) => {
+    const product = getProductById(item.productId);
+    if (!product) return;
+    tableData.push([
+      index++,
+      product.name,
+      `Rs. ${product.price.toFixed(2)}`,
+      item.quantity,
+      `Rs. ${(product.price * item.quantity).toFixed(2)}`
+    ]);
+  });
+
+  // Product Table
+  autoTable(doc, {
+    startY: 90,
+    head: [['Sl. No', 'Description', 'Unit Price', 'Qty', 'Total']],
+    body: tableData,
+    theme: 'striped',
+    headStyles: { fillColor: primaryColor as [number, number, number], textColor: 255, fontStyle: 'bold' },
+    styles: { fontSize: 9, cellPadding: 5 },
+    columnStyles: {
+      0: { cellWidth: 20 },
+      1: { cellWidth: 'auto' },
+      2: { cellWidth: 30, halign: 'right' },
+      3: { cellWidth: 20, halign: 'center' },
+      4: { cellWidth: 35, halign: 'right' }
+    }
+  });
+
+  // Totals Section
+  const finalY = (doc as any).lastAutoTable.finalY || 150;
+
+  doc.setFont('helvetica', 'bold');
+  doc.text('Payment Information', 14, finalY + 15);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Payment Mode: ${order.paymentMethod === 'cod' ? 'Cash on Delivery' : 'Google Pay (UPI)'}`, 14, finalY + 22);
+  doc.text(`Payment Status: ${order.paymentStatus}`, 14, finalY + 28);
+
+  // Final Total Alignment
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Total Amount:', 130, finalY + 22);
+  doc.text(`Rs. ${order.total.toFixed(2)}`, 196, finalY + 22, { align: 'right' });
+
+  // Footer
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'italic');
+  doc.setTextColor(150, 150, 150);
+  doc.text('Thank you for shopping with GajuStore!', 105, 280, { align: 'center' });
+  doc.text('This is a computer generated document and does not require a signature.', 105, 285, { align: 'center' });
+
+  doc.save(`Invoice_${order.id}.pdf`);
+}
 
 const statusColors: Record<Order['status'], string> = {
   pending: 'bg-amber-100 text-amber-700 border-amber-200',
@@ -119,13 +237,24 @@ export function CustomerOrders() {
                   <p className="text-gray-700">{order.paymentMethod === 'cod' ? 'Cash on Delivery' : 'Google Pay (UPI)'}</p>
                 </div>
 
-                <Link
-                  to={`/order-confirmation/${order.id}`}
-                  className="mt-6 flex items-center justify-center gap-2 px-6 py-3 border-2 border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
-                >
-                  View Order Details
-                  <ChevronRight className="w-5 h-5" />
-                </Link>
+                <div className="mt-6 flex flex-wrap gap-3">
+                  {order.status === 'delivered' && (
+                    <button
+                      onClick={() => downloadInvoice(order)}
+                      className="flex items-center justify-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                    >
+                      <Download className="w-5 h-5" />
+                      Download Invoice
+                    </button>
+                  )}
+                  <Link
+                    to={`/order-confirmation/${order.id}`}
+                    className="flex flex-1 items-center justify-center gap-2 px-6 py-3 border-2 border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
+                  >
+                    View Order Details
+                    <ChevronRight className="w-5 h-5" />
+                  </Link>
+                </div>
               </div>
             </div>
           ))}

@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Check, MapPin, CreditCard, Package, ChevronLeft } from 'lucide-react';
 import { getCart, getAddresses, saveAddress, createOrder, clearCart } from '../utils/storage';
 import { getProductById } from '../data/products';
@@ -13,9 +13,12 @@ export function Checkout() {
   const [currentStep, setCurrentStep] = useState<CheckoutStep>('address');
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<'cod' | 'gpay' | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<'cod' | null>(null);
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [orderPlaced, setOrderPlaced] = useState(false);
+  const redirectTimerRef = useRef<number | null>(null);
+  const [cartItems, setCartItems] = useState(() => getCart());
 
   const [newAddress, setNewAddress] = useState({
     name: '',
@@ -26,14 +29,34 @@ export function Checkout() {
     pincode: ''
   });
 
-  const cartItems = getCart();
+  useEffect(() => {
+    const syncCart = () => setCartItems(getCart());
+    syncCart();
+    window.addEventListener('storage', syncCart);
+    window.addEventListener('cartUpdated', syncCart);
+    return () => {
+      window.removeEventListener('storage', syncCart);
+      window.removeEventListener('cartUpdated', syncCart);
+    };
+  }, []);
 
   useEffect(() => {
-    if (cartItems.length === 0) {
+    loadAddresses();
+  }, []);
+
+  useEffect(() => {
+    if (!orderPlaced && cartItems.length === 0) {
       navigate('/cart');
     }
-    loadAddresses();
-  }, [cartItems, navigate]);
+  }, [cartItems.length, navigate, orderPlaced]);
+
+  useEffect(() => {
+    return () => {
+      if (redirectTimerRef.current !== null) {
+        window.clearTimeout(redirectTimerRef.current);
+      }
+    };
+  }, []);
 
   const loadAddresses = () => {
     const savedAddresses = getAddresses();
@@ -55,11 +78,6 @@ export function Checkout() {
   };
 
   const { subtotal, deliveryCharge, total } = calculateTotal();
-
-  // Dynamic QR: encodes UPI deep link with current order total so scan shows correct amount
-  const gpayQrUrl = `https://quickchart.io/qr?size=320&text=${encodeURIComponent(
-    `upi://pay?pa=shyamroaster-1@okicici&pn=Shyam%20Roaster&am=${total}&cu=INR&tn=Kiran%20Rasan%20Order%20Payment`
-  )}`;
 
   const handleAddAddress = () => {
     if (!newAddress.name || !newAddress.mobile || !newAddress.house || 
@@ -83,7 +101,7 @@ export function Checkout() {
     toast.success('Address added successfully');
   };
 
-  const handlePlaceOrder = (paymentStatusOverride?: 'pending' | 'paid') => {
+  const handlePlaceOrder = () => {
     if (!selectedAddress) {
       toast.error('Please select a delivery address');
       return;
@@ -96,12 +114,14 @@ export function Checkout() {
 
     setIsProcessing(true);
     const order = createOrder(cartItems, selectedAddress, paymentMethod, total, {
-      paymentStatus: paymentStatusOverride || (paymentMethod === 'gpay' ? 'paid' : 'pending')
+      paymentStatus: 'pending'
     });
     clearCart();
     window.dispatchEvent(new Event('cartUpdated'));
     setIsProcessing(false);
-    navigate(`/order-confirmation/${order.id}`);
+    setOrderPlaced(true);
+    toast.success(`Order #${order.id} placed successfully`);
+    redirectTimerRef.current = window.setTimeout(() => navigate('/'), 2200);
   };
 
   const canProceedToReview = selectedAddress !== null;
@@ -117,14 +137,32 @@ export function Checkout() {
   return (
     <div className="min-h-screen bg-yellow-50/40">
       <div className="max-w-7xl mx-auto px-4 py-4 md:py-8">
-        <div className="flex items-center gap-3 mb-4 md:mb-8 relative z-[60] isolate">
-          <a
-            href="/cart"
+        {orderPlaced ? (
+          <div className="max-w-xl mx-auto bg-white rounded-xl shadow-md p-6 md:p-8 text-center">
+            <div className="w-14 h-14 mx-auto rounded-full bg-green-100 flex items-center justify-center mb-4">
+              <Check className="w-7 h-7 text-green-600" />
+            </div>
+            <h2 className="text-2xl md:text-3xl mb-2">Order Placed Successfully</h2>
+            <p className="text-gray-600 mb-6">
+              Redirecting to home page automatically...
+            </p>
+            <Link
+              to="/"
+              className="inline-block px-6 py-3 bg-green-600 text-yellow-100 rounded-lg hover:bg-green-500 transition-colors"
+            >
+              Continue Shopping
+            </Link>
+          </div>
+        ) : (
+          <>
+        <div className="flex items-center gap-3 mb-4 md:mb-8 relative">
+          <Link
+            to="/cart"
             className="flex items-center justify-center min-w-[44px] min-h-[44px] -ml-1 rounded-full text-gray-700 hover:bg-gray-200 active:bg-gray-300 transition-colors touch-manipulation cursor-pointer"
             aria-label="Go back to cart"
           >
             <ChevronLeft className="w-8 h-8" strokeWidth={2.5} />
-          </a>
+          </Link>
           <h1 className="text-2xl md:text-4xl flex-1">Checkout</h1>
         </div>
 
@@ -375,58 +413,10 @@ export function Checkout() {
                       )}
                     </div>
                   </div>
-
-                  <div
-                    onClick={() => setPaymentMethod('gpay')}
-                    className={`p-4 md:p-6 border-2 rounded-lg cursor-pointer transition-colors ${
-                      paymentMethod === 'gpay'
-                        ? 'border-green-600 bg-green-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-3 md:gap-4 min-w-0">
-                        <div className="w-10 h-10 md:w-12 md:h-12 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                          <span className="text-xl md:text-2xl">📱</span>
-                        </div>
-                        <div className="min-w-0">
-                          <h3 className="text-base md:text-xl truncate">Google Pay (UPI)</h3>
-                          <p className="text-xs md:text-base text-gray-600">Pay instantly using UPI</p>
-                        </div>
-                      </div>
-                      {paymentMethod === 'gpay' && (
-                        <Check className="w-5 h-5 md:w-6 md:h-6 text-green-600 flex-shrink-0" />
-                      )}
-                    </div>
-                  </div>
                 </div>
-                {paymentMethod === 'gpay' && (
-                  <div className="border border-green-200 rounded-lg p-4 bg-green-50 mb-4">
-                    <h3 className="text-base md:text-lg mb-2 text-green-800">Scan & Pay with Google Pay (UPI)</h3>
-                    <img
-                      src={gpayQrUrl}
-                      alt={`Google Pay UPI QR - Pay ₹${total}`}
-                      className="w-56 h-56 md:w-72 md:h-72 object-contain mx-auto rounded-lg border bg-white"
-                    />
-                    <p className="text-xs md:text-sm text-gray-600 mt-3 text-center">
-                      Scan this QR in GPay and complete payment of <strong>₹{total}</strong>.
-                    </p>
-                    <button
-                      onClick={() => {
-                        toast.success('Payment marked as completed. Placing order...');
-                        handlePlaceOrder('paid');
-                      }}
-                      disabled={isProcessing}
-                      className="w-full mt-4 px-4 md:px-6 py-3 md:py-4 text-base md:text-lg bg-green-600 text-yellow-100 rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-                    >
-                      I Have Paid - Auto Place Order
-                    </button>
-                  </div>
-                )}
-
                 {paymentMethod === 'cod' && (
                   <button
-                    onClick={() => handlePlaceOrder('pending')}
+                    onClick={handlePlaceOrder}
                     disabled={!canPlaceOrder || isProcessing}
                     className="w-full px-4 md:px-6 py-3 md:py-4 text-base md:text-lg bg-green-600 text-yellow-100 rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
                   >
@@ -481,6 +471,8 @@ export function Checkout() {
             </div>
           </div>
         </div>
+        </>
+        )}
       </div>
     </div>
   );

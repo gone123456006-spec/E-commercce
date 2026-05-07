@@ -1,8 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Search, ChevronRight, ChevronLeft, ShoppingBag } from 'lucide-react';
+import { getProducts } from '../data/products';
+import { addToCart } from '../utils/storage';
+import { toast } from 'sonner';
 
-const banners = [
+const ADMIN_HOMEPAGE_BANNERS_KEY = 'admin_homepage_banners';
+
+const defaultBanners = [
   { id: 1, src: '/assets/images/Banner 1 .png', link: '/' },
   { id: 2, src: '/assets/images/Banner 2.png', link: '/' },
   { id: 3, src: '/assets/images/Banner 3.png', link: '/' },
@@ -11,18 +16,34 @@ const banners = [
   { id: 7, src: '/assets/images/Banner 7.png', link: '/' },
 ];
 
+const getHomeBanners = () => {
+  if (typeof window === 'undefined') return defaultBanners;
+  const runtimeBanners = (window as any).__ADMIN_HOMEPAGE_BANNERS__;
+  if (Array.isArray(runtimeBanners) && runtimeBanners.length > 0) {
+    return runtimeBanners;
+  }
+  try {
+    const raw = localStorage.getItem(ADMIN_HOMEPAGE_BANNERS_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(parsed) || parsed.length === 0) return defaultBanners;
+    return parsed.filter((banner) => banner && typeof banner.src === 'string' && banner.src.trim());
+  } catch {
+    return defaultBanners;
+  }
+};
+
 const categories = [
   {
-    id: 'clothes',
-    name: 'Clothes',
-    image: 'https://images.unsplash.com/photo-1611312449545-94176309c857?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmYXNoaW9uJTIwY2xvdGhlcyUyMGFwcGFyZWx8ZW58MXx8fHwxNzcwMzMxNzQ1fDA&ixlib=rb-4.1.0&q=80&w=1080',
-    description: 'Latest fashion trends'
+    id: 'chips-namkeen',
+    name: 'Snacks & Drinks',
+    image: 'https://images.unsplash.com/photo-1568909344668-6f14a07b56a0?w=1080&h=720&fit=crop',
+    description: 'Tasty snacks and cool drinks'
   },
   {
-    id: 'jewellery',
-    name: 'Jewellery',
-    image: 'https://images.unsplash.com/photo-1718871186381-6d59524a64f6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxqZXdlbHJ5JTIwZ29sZCUyMGFjY2Vzc29yaWVzfGVufDF8fHx8MTc3MDM5NDAzN3ww&ixlib=rb-4.1.0&q=80&w=1080',
-    description: 'Elegant accessories'
+    id: 'vegetables-fruits',
+    name: 'Grocery & Kitchen',
+    image: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=1080&h=720&fit=crop',
+    description: 'Daily grocery and kitchen needs'
   },
   {
     id: 'food',
@@ -166,23 +187,66 @@ const beautyAndPersonalCareCategories = [
   }
 ];
 
+const shopFromHereGroups = [
+  {
+    id: 'snacks-drinks',
+    title: 'Snacks & Drinks',
+    categories: snacksAndDrinksCategories,
+    viewAllCategoryId: 'chips-namkeen'
+  },
+  {
+    id: 'grocery-kitchen',
+    title: 'Grocery & Kitchen',
+    categories: groceryAndKitchenCategories,
+    viewAllCategoryId: 'vegetables-fruits'
+  },
+  {
+    id: 'beauty-personal-care',
+    title: 'Beauty & Personal Care',
+    categories: beautyAndPersonalCareCategories,
+    viewAllCategoryId: 'bath-body'
+  }
+];
+
 export function HomePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentBanner, setCurrentBanner] = useState(0);
+  const [banners, setBanners] = useState(() => getHomeBanners());
+  const [selectedQuantities, setSelectedQuantities] = useState<Record<string, number>>({});
+  const [, setProductVersion] = useState(0);
   const navigate = useNavigate();
+  const liveProducts = getProducts();
 
   useEffect(() => {
+    if (banners.length <= 1) return;
     const timer = setInterval(() => {
       setCurrentBanner((prev) => (prev + 1) % banners.length);
     }, 6000);
     return () => clearInterval(timer);
+  }, [banners.length]);
+
+  useEffect(() => {
+    const onProductsUpdated = () => {
+      setBanners(getHomeBanners());
+      setProductVersion((v) => v + 1);
+    };
+    window.addEventListener('productsUpdated', onProductsUpdated);
+    return () => window.removeEventListener('productsUpdated', onProductsUpdated);
   }, []);
 
+  useEffect(() => {
+    if (currentBanner >= banners.length) {
+      setCurrentBanner(0);
+    }
+  }, [banners.length, currentBanner]);
+
   const nextBanner = () => {
+    if (banners.length === 0) return;
     setCurrentBanner((prev) => (prev + 1) % banners.length);
   };
 
   const prevBanner = () => {
+    if (banners.length === 0) return;
     setCurrentBanner((prev) => (prev - 1 + banners.length) % banners.length);
   };
 
@@ -191,6 +255,22 @@ export function HomePage() {
     if (searchQuery.trim()) {
       navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
     }
+  };
+
+  const updateSelectedQuantity = (productId: string, nextQuantity: number) => {
+    setSelectedQuantities((prev) => ({
+      ...prev,
+      [productId]: Math.max(1, Math.min(10, nextQuantity))
+    }));
+  };
+
+  const getSelectedQuantity = (productId: string) => selectedQuantities[productId] || 1;
+
+  const handleAddToCart = (productId: string) => {
+    const quantity = getSelectedQuantity(productId);
+    addToCart(productId, quantity);
+    window.dispatchEvent(new Event('cartUpdated'));
+    toast.success(`Added ${quantity} item(s) to cart`);
   };
 
   return (
@@ -399,6 +479,23 @@ export function HomePage() {
           0%   { background-position: 200% center; }
           100% { background-position: -200% center; }
         }
+        @keyframes shop-bag-bounce {
+          0%, 100% { transform: translateY(0) rotate(0deg); }
+          25% { transform: translateY(-2px) rotate(-5deg); }
+          50% { transform: translateY(-4px) rotate(0deg); }
+          75% { transform: translateY(-2px) rotate(5deg); }
+        }
+        .shop-bag-bounce {
+          animation: shop-bag-bounce 1.8s ease-in-out infinite;
+          transform-origin: center;
+        }
+        .no-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+        .no-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
       `}</style>
 
 
@@ -460,6 +557,101 @@ export function HomePage() {
               </h3>
             </Link>
           ))}
+        </div>
+      </div>
+
+      {/* Shop From Here */}
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 pb-8 sm:pb-10 md:pb-14">
+        <div className="mb-6 flex items-center justify-center gap-2 sm:gap-3">
+          <ShoppingBag className="w-5 h-5 sm:w-6 sm:h-6 text-green-700 shop-bag-bounce" />
+          <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 text-center">
+            Shop From Here
+          </h3>
+        </div>
+        <div className="space-y-7">
+          {shopFromHereGroups.map((group) => {
+            const groupCategoryIds = new Set(group.categories.map((category) => category.id));
+            const groupProducts = liveProducts
+              .filter((product) => groupCategoryIds.has(product.category))
+              .sort((a, b) => {
+                const aCustom = a.id.startsWith('custom_') ? 1 : 0;
+                const bCustom = b.id.startsWith('custom_') ? 1 : 0;
+                if (aCustom !== bCustom) return bCustom - aCustom;
+                return b.rating - a.rating || a.price - b.price;
+              });
+
+            return (
+              <section key={group.id}>
+                <h4 className="text-base sm:text-lg md:text-xl font-semibold text-gray-900 mb-3">
+                  {group.title}
+                </h4>
+                <div className="overflow-x-auto no-scrollbar">
+                  <div className="flex w-max gap-3 sm:gap-4">
+                    {groupProducts.map((product, index) => {
+                      const mrp = Math.round(product.price * 1.15);
+                      const discountPercent = Math.round(((mrp - product.price) / mrp) * 100);
+                      const selectedQty = getSelectedQuantity(product.id);
+
+                      return (
+                        <div
+                          key={`${product.id}-${index}`}
+                          className="min-w-[180px] sm:min-w-[200px] md:min-w-[220px] bg-white border border-rose-100 rounded-xl p-2.5 sm:p-3 shadow-sm"
+                        >
+                          <Link to={`/product/${product.id}`} className="block">
+                            <img
+                              src={product.image}
+                              alt={product.name}
+                              className="w-full h-28 sm:h-32 md:h-36 object-cover rounded-lg mb-2"
+                            />
+                            <p className="text-xs sm:text-sm font-semibold text-gray-900 line-clamp-2 min-h-[2.2rem]">
+                              {product.name}
+                            </p>
+                          </Link>
+
+                          <div className="mt-2 flex items-center gap-2">
+                            <p className="text-sm sm:text-base font-bold text-green-700">₹{product.price}</p>
+                            <p className="text-xs text-gray-400 line-through">₹{mrp}</p>
+                            <span className="text-[10px] sm:text-xs text-emerald-700 font-semibold">{discountPercent}% OFF</span>
+                          </div>
+
+                          <div className="mt-2 flex items-center justify-between">
+                            <p className="text-xs sm:text-sm text-gray-600">⭐ {product.rating.toFixed(1)}</p>
+                            <div className="inline-flex items-center border rounded-md overflow-hidden">
+                              <button
+                                type="button"
+                                onClick={() => updateSelectedQuantity(product.id, selectedQty - 1)}
+                                className="px-2 py-1 text-sm hover:bg-gray-100"
+                                aria-label={`Decrease quantity for ${product.name}`}
+                              >
+                                -
+                              </button>
+                              <span className="px-2 py-1 text-xs sm:text-sm min-w-[28px] text-center">{selectedQty}</span>
+                              <button
+                                type="button"
+                                onClick={() => updateSelectedQuantity(product.id, selectedQty + 1)}
+                                className="px-2 py-1 text-sm hover:bg-gray-100"
+                                aria-label={`Increase quantity for ${product.name}`}
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleAddToCart(product.id)}
+                            className="mt-3 w-full px-3 py-2 text-xs sm:text-sm bg-green-600 text-yellow-100 rounded-lg hover:bg-green-500 transition-colors"
+                          >
+                            Add to Cart
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </section>
+            );
+          })}
         </div>
       </div>
 

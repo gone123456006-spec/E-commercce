@@ -5,6 +5,8 @@ import { getProductById } from '../data/products';
 import { cancelOrder, getOrders, updateOrderStatus } from '../utils/storage';
 import type { Order } from '../utils/storage';
 import { toast } from 'sonner';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const statusLabelMap: Record<Order['status'], string> = {
   pending: 'Pending',
@@ -13,6 +15,15 @@ const statusLabelMap: Record<Order['status'], string> = {
   delivered: 'Delivered',
   cancelled: 'Cancelled'
 };
+
+const statusQuickFilters: { value: 'all' | Order['status']; label: string; badge: string; color: string }[] = [
+  { value: 'all', label: 'All Orders', badge: '⚪', color: 'text-gray-700' },
+  { value: 'pending', label: 'Pending Orders', badge: '🟡', color: 'text-amber-700' },
+  { value: 'accepted', label: 'Accepted Orders', badge: '🟢', color: 'text-green-700' },
+  { value: 'out_for_delivery', label: 'Out for Delivery', badge: '🔵', color: 'text-blue-700' },
+  { value: 'delivered', label: 'Delivered Orders', badge: '🟣', color: 'text-purple-700' },
+  { value: 'cancelled', label: 'Cancelled Orders', badge: '🔴', color: 'text-red-700' }
+];
 
 function isToday(dateIso: string) {
   const d = new Date(dateIso);
@@ -36,35 +47,134 @@ function csvEscape(value: string | number) {
   return `"${str.replace(/"/g, '""')}"`;
 }
 
+function getReturnPolicyByCategory(category?: string) {
+  const nonReturnableCategories = new Set([
+    'vegetables-fruits',
+    'dairy-bread-eggs',
+    'chicken-meat-fish',
+    'ice-creams'
+  ]);
+  if (category && nonReturnableCategories.has(category)) {
+    return 'Non-returnable (fresh/perishable item)';
+  }
+  return '7-day return available (unused & sealed pack)';
+}
+
 function downloadInvoice(order: Order) {
-  const lines = [
-    'SHOPZONE INVOICE',
-    `Invoice Date: ${fmtDate(new Date().toISOString())}`,
-    `Order ID: ${order.id}`,
-    `Order Date: ${fmtDate(order.date)}`,
-    '',
-    `Customer: ${order.address.name}`,
-    `Phone: ${order.address.mobile}`,
-    `Address: ${order.address.house}, ${order.address.city}, ${order.address.state} - ${order.address.pincode}`,
-    '',
-    'Items:'
-  ];
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4'
+  });
+
+  // Theme Colors
+  const primaryColor = [35, 47, 62]; // Amazon Navy
+  const textColor = [51, 51, 51]; // Dark Gray
+  const lightGray = [245, 245, 245];
+
+  // Header Section
+  doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+  doc.rect(0, 0, 210, 40, 'F');
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(24);
+  doc.setFont('helvetica', 'bold');
+  doc.text('GajuStore', 14, 25);
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Tax Invoice/Bill', 196, 25, { align: 'right' });
+
+  // Order Details Section
+  doc.setTextColor(textColor[0], textColor[1], textColor[2]);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Order Details', 14, 55);
+
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Order ID: ${order.id}`, 14, 62);
+  doc.text(`Order Date: ${fmtDate(order.date)}`, 14, 68);
+  doc.text(`Invoice Date: ${fmtDate(new Date().toISOString())}`, 14, 74);
+
+  // Billing / Delivery Address Box
+  doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
+  doc.rect(120, 48, 76, 32, 'F');
+
+  doc.setFont('helvetica', 'bold');
+  doc.text('Delivery Address:', 124, 55);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`${order.address.name}`, 124, 61);
+  doc.text(`${order.address.house}`, 124, 67);
+  doc.text(`${order.address.city}, ${order.address.state} - ${order.address.pincode}`, 124, 73);
+  doc.text(`Phone: ${order.address.mobile}`, 124, 79);
+
+  // Table Data Preparation
+  const tableData: (string | number)[][] = [];
+  const returnPolicyLines: string[] = [];
+  let index = 1;
   order.items.forEach((item) => {
     const product = getProductById(item.productId);
     if (!product) return;
-    lines.push(`- ${product.name} | Qty: ${item.quantity} | ₹${product.price * item.quantity}`);
+    const returnPolicy = getReturnPolicyByCategory(product.category);
+    tableData.push([
+      index++,
+      product.name,
+      `Rs. ${product.price.toFixed(2)}`,
+      item.quantity,
+      `Rs. ${(product.price * item.quantity).toFixed(2)}`,
+      returnPolicy
+    ]);
+    returnPolicyLines.push(`${product.name}: ${returnPolicy}`);
   });
-  lines.push('');
-  lines.push(`Payment Mode: ${order.paymentMethod === 'cod' ? 'Cash on Delivery' : 'Google Pay (UPI)'}`);
-  lines.push(`Payment Status: ${order.paymentStatus}`);
-  lines.push(`Total Amount: ₹${order.total}`);
-  const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `invoice-${order.id}.txt`;
-  a.click();
-  URL.revokeObjectURL(url);
+
+  // Product Table
+  autoTable(doc, {
+    startY: 90,
+    head: [['Sl. No', 'Description', 'Unit Price', 'Qty', 'Total', 'Return Policy']],
+    body: tableData,
+    theme: 'striped',
+    headStyles: { fillColor: primaryColor as [number, number, number], textColor: 255, fontStyle: 'bold' },
+    styles: { fontSize: 9, cellPadding: 5 },
+    columnStyles: {
+      0: { cellWidth: 20 },
+      1: { cellWidth: 48 },
+      2: { cellWidth: 24, halign: 'right' },
+      3: { cellWidth: 20, halign: 'center' },
+      4: { cellWidth: 24, halign: 'right' },
+      5: { cellWidth: 54 }
+    }
+  });
+
+  // Totals Section
+  const finalY = (doc as any).lastAutoTable.finalY || 150;
+
+  doc.setFont('helvetica', 'bold');
+  doc.text('Payment Information', 14, finalY + 15);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Payment Mode: ${order.paymentMethod === 'cod' ? 'Cash on Delivery' : 'Google Pay (UPI)'}`, 14, finalY + 22);
+  doc.text(`Payment Status: ${order.paymentStatus}`, 14, finalY + 28);
+
+  doc.setFont('helvetica', 'bold');
+  doc.text('Return Policy (Product-wise)', 14, finalY + 36);
+  doc.setFont('helvetica', 'normal');
+  returnPolicyLines.slice(0, 4).forEach((line, i) => {
+    doc.text(`- ${line}`, 14, finalY + 42 + i * 6);
+  });
+
+  // Final Total Alignment
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Total Amount:', 130, finalY + 22);
+  doc.text(`Rs. ${order.total.toFixed(2)}`, 196, finalY + 22, { align: 'right' });
+
+  // Footer
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'italic');
+  doc.setTextColor(150, 150, 150);
+  doc.text('Thank you for shopping with GajuStore!', 105, 280, { align: 'center' });
+  doc.text('This is a computer generated document and does not require a signature.', 105, 285, { align: 'center' });
+
+  doc.save(`Invoice_${order.id}.pdf`);
 }
 
 export function Orders() {
@@ -264,10 +374,15 @@ export function Orders() {
   const outForDeliveryOrders = filteredOrders.filter((o) => o.status === 'out_for_delivery');
   const deliveredOrders = filteredOrders.filter((o) => o.status === 'delivered');
   const cancelledOrders = filteredOrders.filter((o) => o.status === 'cancelled');
+  const showPendingSection = statusFilter === 'all' || statusFilter === 'pending';
+  const showAcceptedSection = statusFilter === 'all' || statusFilter === 'accepted';
+  const showOutForDeliverySection = statusFilter === 'all' || statusFilter === 'out_for_delivery';
+  const showDeliveredSection = statusFilter === 'all' || statusFilter === 'delivered';
+  const showCancelledSection = statusFilter === 'all' || statusFilter === 'cancelled';
 
   return (
     <div className="min-h-screen bg-yellow-50/40">
-      <div className="max-w-7xl mx-auto px-4 py-4 md:py-8">
+      <div className="w-full px-2 md:px-4 py-4 md:py-8">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
           <h1 className="text-2xl md:text-4xl">Order Dashboard</h1>
           <button
@@ -279,7 +394,7 @@ export function Orders() {
           </button>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-8 gap-3 mb-6">
           <div className="bg-white rounded-lg p-3 shadow"><p className="text-xs text-gray-500">Total Orders</p><p className="text-xl">{summary.totalOrders}</p></div>
           <div className="bg-white rounded-lg p-3 shadow"><p className="text-xs text-gray-500">Pending</p><p className="text-xl text-amber-700">{summary.pendingOrders}</p></div>
           <div className="bg-white rounded-lg p-3 shadow"><p className="text-xs text-gray-500">Accepted</p><p className="text-xl text-blue-700">{summary.acceptedOrders}</p></div>
@@ -292,7 +407,24 @@ export function Orders() {
 
         <div className="bg-white rounded-xl shadow-md p-4 md:p-6 mb-6">
           <h2 className="text-lg md:text-2xl mb-4 inline-flex items-center gap-2"><Search className="w-5 h-5" /> Filters & Search</h2>
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+          <div className="mb-3 flex flex-wrap gap-2">
+            {statusQuickFilters.map((item) => (
+              <button
+                key={item.value}
+                type="button"
+                onClick={() => setStatusFilter(item.value)}
+                className={`px-3 py-1.5 rounded-full text-xs md:text-sm border transition-colors ${
+                  statusFilter === item.value
+                    ? 'bg-green-600 text-yellow-100 border-green-600'
+                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                <span className="mr-1">{item.badge}</span>
+                <span className={statusFilter === item.value ? '' : item.color}>{item.label}</span>
+              </button>
+            ))}
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
             <input
               type="text"
               placeholder="Search Order ID / Customer Name"
@@ -364,16 +496,15 @@ export function Orders() {
         </div>
 
         <div className="space-y-6">
-          <section className="bg-white rounded-xl shadow-md p-4 md:p-6">
+          {showPendingSection && <section className="bg-white rounded-xl shadow-md p-4 md:p-6">
             <h2 className="text-lg md:text-2xl mb-3">🟡 Pending Orders ({pendingOrders.length})</h2>
             {pendingOrders.length === 0 && <p className="text-gray-500">No pending orders.</p>}
             <div className="space-y-3">
               {pendingOrders.map((order) => (
                 <div
                   key={order.id}
-                  className={`rounded-lg transition-all duration-500 ${
-                    newOrderId === order.id ? 'ring-2 ring-green-500 bg-green-50/50 animate-pulse' : ''
-                  }`}
+                  className={`rounded-lg transition-all duration-500 ${newOrderId === order.id ? 'ring-2 ring-green-500 bg-green-50/50 animate-pulse' : ''
+                    }`}
                   style={newOrderId === order.id ? { animationDuration: '1.5s' } : undefined}
                 >
                   {newOrderId === order.id && (
@@ -389,9 +520,9 @@ export function Orders() {
                 </div>
               ))}
             </div>
-          </section>
+          </section>}
 
-          <section className="bg-white rounded-xl shadow-md p-4 md:p-6">
+          {showAcceptedSection && <section className="bg-white rounded-xl shadow-md p-4 md:p-6">
             <h2 className="text-lg md:text-2xl mb-3">🟢 Accepted Orders ({acceptedOrders.length})</h2>
             {acceptedOrders.length === 0 && <p className="text-gray-500">No accepted orders.</p>}
             <div className="space-y-3">
@@ -405,9 +536,9 @@ export function Orders() {
                 </div>
               ))}
             </div>
-          </section>
+          </section>}
 
-          <section className="bg-white rounded-xl shadow-md p-4 md:p-6">
+          {showOutForDeliverySection && <section className="bg-white rounded-xl shadow-md p-4 md:p-6">
             <h2 className="text-lg md:text-2xl mb-3">🔵 Out for Delivery ({outForDeliveryOrders.length})</h2>
             {outForDeliveryOrders.length === 0 && <p className="text-gray-500">No orders out for delivery.</p>}
             <div className="space-y-3">
@@ -423,9 +554,9 @@ export function Orders() {
                 </div>
               ))}
             </div>
-          </section>
+          </section>}
 
-          <section className="bg-white rounded-xl shadow-md p-4 md:p-6">
+          {showDeliveredSection && <section className="bg-white rounded-xl shadow-md p-4 md:p-6">
             <h2 className="text-lg md:text-2xl mb-3">🟣 Delivered Orders ({deliveredOrders.length})</h2>
             {deliveredOrders.length === 0 && <p className="text-gray-500">No delivered orders.</p>}
             <div className="space-y-3">
@@ -446,9 +577,9 @@ export function Orders() {
                 </div>
               ))}
             </div>
-          </section>
+          </section>}
 
-          <section className="bg-white rounded-xl shadow-md p-4 md:p-6">
+          {showCancelledSection && <section className="bg-white rounded-xl shadow-md p-4 md:p-6">
             <h2 className="text-lg md:text-2xl mb-3">🔴 Cancelled Orders ({cancelledOrders.length})</h2>
             {cancelledOrders.length === 0 && <p className="text-gray-500">No cancelled orders.</p>}
             <div className="space-y-3">
@@ -461,7 +592,7 @@ export function Orders() {
                 </div>
               ))}
             </div>
-          </section>
+          </section>}
         </div>
 
         {orders.length === 0 && (

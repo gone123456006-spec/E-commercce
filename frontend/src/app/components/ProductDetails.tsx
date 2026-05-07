@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Star, ShoppingCart, Plus, Minus } from 'lucide-react';
-import { getProductById } from '../data/products';
+import { getProductById, getProducts } from '../data/products';
 import { addToCart } from '../utils/storage';
 import { toast } from 'sonner';
 
@@ -10,6 +10,8 @@ export function ProductDetails() {
   const navigate = useNavigate();
   const product = getProductById(id!);
   const [quantity, setQuantity] = useState(1);
+  const [visibleRelatedCount, setVisibleRelatedCount] = useState(20);
+  const [, setProductVersion] = useState(0);
 
   if (!product) {
     return (
@@ -35,6 +37,37 @@ export function ProductDetails() {
     window.dispatchEvent(new Event('cartUpdated'));
     navigate('/cart');
   };
+
+  const relatedProducts = useMemo(() => {
+    const allProducts = getProducts();
+    const sameCategory = allProducts.filter((p) => p.category === product.category && p.id !== product.id);
+    const fallback = allProducts.filter((p) => p.id !== product.id && p.category !== product.category);
+    return [...sameCategory, ...fallback];
+  }, [product.category, product.id]);
+
+  useEffect(() => {
+    const onProductsUpdated = () => setProductVersion((v) => v + 1);
+    window.addEventListener('productsUpdated', onProductsUpdated);
+    return () => window.removeEventListener('productsUpdated', onProductsUpdated);
+  }, []);
+
+  useEffect(() => {
+    setVisibleRelatedCount(20);
+  }, [product.id]);
+
+  useEffect(() => {
+    const onScroll = () => {
+      if (visibleRelatedCount >= relatedProducts.length) return;
+      const scrollPosition = window.innerHeight + window.scrollY;
+      const triggerPosition = document.body.offsetHeight - 280;
+      if (scrollPosition >= triggerPosition) {
+        setVisibleRelatedCount((prev) => Math.min(prev + 20, relatedProducts.length));
+      }
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [relatedProducts.length, visibleRelatedCount]);
 
   const incrementQuantity = () => {
     if (quantity < product.stock) {
@@ -141,6 +174,51 @@ export function ProductDetails() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Related Products - Loads more on scroll */}
+        <div className="mt-8 md:mt-10">
+          <h2 className="text-xl md:text-2xl mb-4 md:mb-6">Related Products</h2>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
+            {relatedProducts.slice(0, visibleRelatedCount).map((related) => (
+              <div
+                key={related.id}
+                className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden border border-gray-100"
+              >
+                <Link to={`/product/${related.id}`} className="block">
+                  <div className="aspect-square overflow-hidden bg-gray-50">
+                    <img
+                      src={related.image}
+                      alt={related.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                </Link>
+                <div className="p-3">
+                  <Link to={`/product/${related.id}`}>
+                    <h3 className="text-sm md:text-base line-clamp-2 mb-2 hover:text-green-600 transition-colors">
+                      {related.name}
+                    </h3>
+                  </Link>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-green-600 font-bold">₹{related.price}</span>
+                    <span className="text-xs text-gray-600">⭐ {related.rating.toFixed(1)}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      addToCart(related.id, 1);
+                      window.dispatchEvent(new Event('cartUpdated'));
+                      toast.success(`${related.name} added to cart!`);
+                    }}
+                    className="w-full px-3 py-2 text-sm bg-green-600 text-yellow-100 rounded-lg hover:bg-green-500 transition-colors"
+                  >
+                    Add to Cart
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
