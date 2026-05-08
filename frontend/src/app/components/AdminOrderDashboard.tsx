@@ -3,7 +3,7 @@ import { Orders } from './Orders';
 import { getOrders } from '../utils/storage';
 import { getProductById, getProducts } from '../data/products';
 
-type DashboardMode = 'orders' | 'group-cards' | 'homepage-banners';
+type DashboardMode = 'orders' | 'group-cards' | 'homepage-banners' | 'flash-deals';
 
 const groupLabelByCategory: Record<string, string> = {
   'chips-namkeen': 'Snacks & Drinks',
@@ -69,6 +69,14 @@ const ADMIN_CARD_EDITS_KEY = 'admin_dashboard_card_edits';
 const ADMIN_CUSTOM_CARDS_KEY = 'admin_dashboard_custom_cards';
 const ADMIN_DELETED_CARDS_KEY = 'admin_dashboard_deleted_cards';
 const ADMIN_HOMEPAGE_BANNERS_KEY = 'admin_homepage_banners';
+const ADMIN_FLASH_DEALS_KEY = 'admin_homepage_flash_deals';
+const ADMIN_DASHBOARD_AUTH_KEY = 'admin_dashboard_authenticated';
+const ADMIN_DASHBOARD_PASSWORD = 'Ar@v1234';
+
+interface FlashDealCardConfig {
+  productId: string;
+  badgeText: string;
+}
 
 interface HomeBanner {
   id: number;
@@ -87,6 +95,15 @@ const defaultHomeBanners: HomeBanner[] = [
 
 export function AdminOrderDashboard() {
   const [mode, setMode] = useState<DashboardMode>('orders');
+  const [adminPasswordInput, setAdminPasswordInput] = useState('');
+  const [adminPasswordError, setAdminPasswordError] = useState('');
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    try {
+      return sessionStorage.getItem(ADMIN_DASHBOARD_AUTH_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  });
   const [cardEdits, setCardEdits] = useState<Record<string, Partial<GroupProductCard>>>(() => {
     try {
       const raw = localStorage.getItem(ADMIN_CARD_EDITS_KEY);
@@ -134,6 +151,38 @@ export function AdminOrderDashboard() {
   });
   const [newBannerSrc, setNewBannerSrc] = useState('');
   const [newBannerLink, setNewBannerLink] = useState('/');
+  const [flashDealCards, setFlashDealCards] = useState<FlashDealCardConfig[]>(() => {
+    try {
+      const raw = localStorage.getItem(ADMIN_FLASH_DEALS_KEY);
+      const parsed = raw ? JSON.parse(raw) : {};
+      const cards = Array.isArray(parsed?.cards) ? parsed.cards : [];
+      return cards
+        .filter((c: any) => c && typeof c.productId === 'string')
+        .map((c: any) => ({
+          productId: String(c.productId),
+          badgeText: typeof c.badgeText === 'string' && c.badgeText.trim() ? c.badgeText : 'Low Stock'
+        }));
+    } catch {
+      return [];
+    }
+  });
+  const [flashDealEndAt, setFlashDealEndAt] = useState<string>(() => {
+    try {
+      const raw = localStorage.getItem(ADMIN_FLASH_DEALS_KEY);
+      const parsed = raw ? JSON.parse(raw) : {};
+      return typeof parsed?.endAt === 'string' ? parsed.endAt : '';
+    } catch {
+      return '';
+    }
+  });
+  const [newFlashDealProductId, setNewFlashDealProductId] = useState('');
+  const [newFlashDealBadgeText, setNewFlashDealBadgeText] = useState('Low Stock');
+  const [editingFlashDealProductId, setEditingFlashDealProductId] = useState<string | null>(null);
+  const [editingFlashDealNextProductId, setEditingFlashDealNextProductId] = useState('');
+  const [editingFlashDealBadgeText, setEditingFlashDealBadgeText] = useState('Low Stock');
+  const [groupCardsFilterGroup, setGroupCardsFilterGroup] = useState('all');
+  const [groupCardsFilterCategory, setGroupCardsFilterCategory] = useState('all');
+  const [groupCardsSearch, setGroupCardsSearch] = useState('');
   const [addDraft, setAddDraft] = useState<Partial<GroupProductCard>>({
     name: '',
     image: '',
@@ -229,6 +278,32 @@ export function AdminOrderDashboard() {
       return acc;
     }, {});
   }, [cardEdits, customCards, deletedCardIds]);
+
+  const allProducts = useMemo(
+    () =>
+      getProducts().sort((a, b) => a.name.localeCompare(b.name)),
+    [cardEdits, customCards, deletedCardIds]
+  );
+
+  const groupCardsCategoryOptions = useMemo(() => {
+    if (groupCardsFilterGroup === 'all') return categoryOptions;
+    return categoriesByGroup[groupCardsFilterGroup] || [];
+  }, [groupCardsFilterGroup]);
+
+  const filteredGroupedCards = useMemo(() => {
+    const query = groupCardsSearch.trim().toLowerCase();
+    return Object.entries(groupedCards).reduce<Record<string, GroupProductCard[]>>((acc, [groupName, cards]) => {
+      if (groupCardsFilterGroup !== 'all' && groupName !== groupCardsFilterGroup) return acc;
+      const nextCards = cards.filter((card) => {
+        if (groupCardsFilterCategory !== 'all' && card.category !== groupCardsFilterCategory) return false;
+        if (!query) return true;
+        const haystack = `${card.name} ${card.category} ${card.description}`.toLowerCase();
+        return haystack.includes(query);
+      });
+      if (nextCards.length > 0) acc[groupName] = nextCards;
+      return acc;
+    }, {});
+  }, [groupedCards, groupCardsFilterGroup, groupCardsFilterCategory, groupCardsSearch]);
 
   const updateDraft = (key: keyof GroupProductCard, value: string) => {
     if (key === 'quantitySold' || key === 'orderCount' || key === 'revenue' || key === 'stock' || key === 'price' || key === 'unitValue') {
@@ -403,6 +478,76 @@ export function AdminOrderDashboard() {
     persistHomeBanners(next.length ? next : defaultHomeBanners);
   };
 
+  const persistFlashDeals = (cards: FlashDealCardConfig[], endAt: string) => {
+    setFlashDealCards(cards);
+    setFlashDealEndAt(endAt);
+    const payload = { cards, endAt };
+    (window as any).__ADMIN_FLASH_DEALS__ = payload;
+    try {
+      localStorage.setItem(ADMIN_FLASH_DEALS_KEY, JSON.stringify(payload));
+    } catch {
+      // no-op
+    }
+    window.dispatchEvent(new Event('productsUpdated'));
+  };
+
+  const handleAddFlashDealCard = () => {
+    if (!newFlashDealProductId) return;
+    if (flashDealCards.some((c) => c.productId === newFlashDealProductId)) return;
+    const next = [
+      ...flashDealCards,
+      {
+        productId: newFlashDealProductId,
+        badgeText: newFlashDealBadgeText.trim() || 'Low Stock'
+      }
+    ];
+    persistFlashDeals(next, flashDealEndAt);
+    setNewFlashDealProductId('');
+    setNewFlashDealBadgeText('Low Stock');
+  };
+
+  const handleRemoveFlashDealCard = (productId: string) => {
+    const next = flashDealCards.filter((c) => c.productId !== productId);
+    persistFlashDeals(next, flashDealEndAt);
+  };
+
+  const handleUpdateFlashBadgeText = (productId: string, badgeText: string) => {
+    const next = flashDealCards.map((c) =>
+      c.productId === productId ? { ...c, badgeText } : c
+    );
+    persistFlashDeals(next, flashDealEndAt);
+  };
+
+  const startEditFlashDealCard = (card: FlashDealCardConfig) => {
+    setEditingFlashDealProductId(card.productId);
+    setEditingFlashDealNextProductId(card.productId);
+    setEditingFlashDealBadgeText(card.badgeText || 'Low Stock');
+  };
+
+  const cancelEditFlashDealCard = () => {
+    setEditingFlashDealProductId(null);
+    setEditingFlashDealNextProductId('');
+    setEditingFlashDealBadgeText('Low Stock');
+  };
+
+  const saveEditFlashDealCard = () => {
+    if (!editingFlashDealProductId || !editingFlashDealNextProductId) return;
+    const duplicateExists =
+      editingFlashDealNextProductId !== editingFlashDealProductId &&
+      flashDealCards.some((c) => c.productId === editingFlashDealNextProductId);
+    if (duplicateExists) return;
+    const next = flashDealCards.map((c) =>
+      c.productId === editingFlashDealProductId
+        ? {
+            productId: editingFlashDealNextProductId,
+            badgeText: editingFlashDealBadgeText.trim() || 'Low Stock'
+          }
+        : c
+    );
+    persistFlashDeals(next, flashDealEndAt);
+    cancelEditFlashDealCard();
+  };
+
   const updateAddDraft = (key: keyof GroupProductCard, value: string) => {
     if (key === 'quantitySold' || key === 'orderCount' || key === 'revenue' || key === 'stock' || key === 'price' || key === 'unitValue') {
       const num = Number(value);
@@ -474,10 +619,71 @@ export function AdminOrderDashboard() {
     });
   };
 
+  const handleAdminLogin = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (adminPasswordInput === ADMIN_DASHBOARD_PASSWORD) {
+      setIsAuthenticated(true);
+      setAdminPasswordError('');
+      setAdminPasswordInput('');
+      try {
+        sessionStorage.setItem(ADMIN_DASHBOARD_AUTH_KEY, 'true');
+      } catch {
+        // no-op
+      }
+      return;
+    }
+    setAdminPasswordError('Invalid password. Please try again.');
+  };
+
+  const handleAdminLogout = () => {
+    setIsAuthenticated(false);
+    setAdminPasswordInput('');
+    setAdminPasswordError('');
+    try {
+      sessionStorage.removeItem(ADMIN_DASHBOARD_AUTH_KEY);
+    } catch {
+      // no-op
+    }
+  };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-yellow-50/40 flex items-center justify-center px-3">
+        <section className="w-full max-w-md bg-white rounded-xl shadow-md p-5 md:p-6">
+          <h2 className="text-xl md:text-2xl font-semibold text-gray-900 mb-2">Admin Dashboard Login</h2>
+          <p className="text-sm text-gray-600 mb-4">Enter password to access admin dashboard.</p>
+          <form onSubmit={handleAdminLogin} className="space-y-3">
+            <input
+              type="password"
+              value={adminPasswordInput}
+              onChange={(e) => {
+                setAdminPasswordInput(e.target.value);
+                if (adminPasswordError) setAdminPasswordError('');
+              }}
+              className="w-full px-3 py-2 border rounded"
+              placeholder="Enter admin password"
+            />
+            {adminPasswordError && <p className="text-sm text-red-600">{adminPasswordError}</p>}
+            <button type="submit" className="w-full px-4 py-2 bg-green-600 text-yellow-100 rounded hover:bg-green-500">
+              Enter Dashboard
+            </button>
+          </form>
+        </section>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-yellow-50/40">
       <div className="w-full px-2 md:px-4 pt-4 md:pt-8">
         <div className="mb-4 md:mb-6 bg-white rounded-xl shadow-sm p-3 md:p-4 flex flex-wrap items-stretch gap-2">
+          <button
+            type="button"
+            onClick={handleAdminLogout}
+            className="w-full sm:w-auto sm:ml-auto px-4 py-2 rounded-lg text-sm md:text-base border border-red-600 text-red-700 hover:bg-red-50 transition-colors"
+          >
+            Logout
+          </button>
           <button
             type="button"
             onClick={() => setMode('orders')}
@@ -498,6 +704,13 @@ export function AdminOrderDashboard() {
             className={`w-full sm:w-auto px-4 py-2 rounded-lg text-sm md:text-base transition-colors ${mode === 'homepage-banners' ? 'bg-green-600 text-yellow-100' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
           >
             Homepage Banners
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('flash-deals')}
+            className={`w-full sm:w-auto px-4 py-2 rounded-lg text-sm md:text-base transition-colors ${mode === 'flash-deals' ? 'bg-green-600 text-yellow-100' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+          >
+            Flash Deals Section
           </button>
           {mode === 'group-cards' && (
             <button
@@ -577,6 +790,136 @@ export function AdminOrderDashboard() {
                 </div>
               </section>
             )}
+            {mode === 'flash-deals' && (
+              <section className="bg-white rounded-xl shadow-md p-4 md:p-6">
+                <h2 className="text-lg md:text-xl mb-4">Flash Deals Section</h2>
+                <p className="text-xs md:text-sm text-gray-600 mb-4">
+                  Add or edit flash deal cards and set section end timing for homepage.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
+                  <select
+                    value={newFlashDealProductId}
+                    onChange={(e) => setNewFlashDealProductId(e.target.value)}
+                    className="w-full px-3 py-2 border rounded bg-white"
+                  >
+                    <option value="">Select product for Flash Deal</option>
+                    {allProducts.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} ({p.category})
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    value={newFlashDealBadgeText}
+                    onChange={(e) => setNewFlashDealBadgeText(e.target.value)}
+                    className="w-full px-3 py-2 border rounded"
+                    placeholder="Badge text (e.g. Low Stock)"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddFlashDealCard}
+                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-500"
+                  >
+                    Add Flash Card
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-4">
+                  <label className="text-xs md:text-sm text-gray-700 font-medium">Deal End Time</label>
+                  <input
+                    type="datetime-local"
+                    value={flashDealEndAt}
+                    onChange={(e) => persistFlashDeals(flashDealCards, e.target.value)}
+                    className="w-full px-3 py-2 border rounded"
+                  />
+                </div>
+                {flashDealCards.length === 0 ? (
+                  <p className="text-xs md:text-sm text-gray-500">No flash deal cards added yet.</p>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {flashDealCards.map((card) => {
+                      const product = allProducts.find((p) => p.id === card.productId);
+                      return (
+                        <article key={card.productId} className="border rounded-lg p-3 bg-gray-50 flex flex-col">
+                          <img
+                            src={product?.image || ''}
+                            alt={product?.name || card.productId}
+                            className="w-full h-32 rounded-md object-cover border bg-white mb-3"
+                          />
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-gray-900 line-clamp-2">{product?.name || card.productId}</p>
+                            <p className="text-xs text-gray-600 capitalize">{(product?.category || 'Unknown category').replace(/-/g, ' ')}</p>
+                            <p className="text-xs text-gray-700 mb-2">Price: ₹{Number(product?.price || 0).toFixed(2)}</p>
+                          </div>
+                          {editingFlashDealProductId === card.productId ? (
+                            <div className="grid grid-cols-1 gap-2 mt-auto">
+                              <select
+                                value={editingFlashDealNextProductId}
+                                onChange={(e) => setEditingFlashDealNextProductId(e.target.value)}
+                                className="w-full px-2 py-1.5 border rounded text-sm bg-white"
+                              >
+                                <option value="">Select product</option>
+                                {allProducts.map((p) => (
+                                  <option key={p.id} value={p.id}>
+                                    {p.name} ({p.category})
+                                  </option>
+                                ))}
+                              </select>
+                              <input
+                                value={editingFlashDealBadgeText}
+                                onChange={(e) => setEditingFlashDealBadgeText(e.target.value)}
+                                className="w-full px-2 py-1.5 border rounded text-sm"
+                                placeholder="Badge text"
+                              />
+                              <div className="grid grid-cols-2 gap-2">
+                                <button
+                                  type="button"
+                                  onClick={saveEditFlashDealCard}
+                                  className="px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-500 text-sm"
+                                >
+                                  Save
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={cancelEditFlashDealCard}
+                                  className="px-3 py-1.5 border rounded hover:bg-gray-100 text-sm"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="grid grid-cols-1 gap-2 mt-auto">
+                              <input
+                                value={card.badgeText}
+                                onChange={(e) => handleUpdateFlashBadgeText(card.productId, e.target.value)}
+                                className="w-full px-2 py-1.5 border rounded text-sm"
+                                placeholder="Badge text"
+                              />
+                              <div className="grid grid-cols-2 gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => startEditFlashDealCard(card)}
+                                  className="px-3 py-1.5 border border-green-600 text-green-700 rounded hover:bg-green-50 text-sm"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveFlashDealCard(card.productId)}
+                                  className="px-3 py-1.5 border border-red-600 text-red-700 rounded hover:bg-red-50 text-sm"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </article>
+                      );
+                    })}
+                  </div>
+                )}
+              </section>
+            )}
             {mode === 'group-cards' && showAddForm && (
               <section className="bg-white rounded-xl shadow-md p-4 md:p-6">
                 <h2 className="text-lg md:text-xl mb-4">Add New Card</h2>
@@ -641,12 +984,60 @@ export function AdminOrderDashboard() {
                 </div>
               </section>
             )}
+            {mode === 'group-cards' && (
+              <section className="bg-white rounded-xl shadow-md p-4 md:p-6">
+                <h2 className="text-lg md:text-xl mb-4">Filter Group-wise Cards</h2>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                  <select
+                    value={groupCardsFilterGroup}
+                    onChange={(e) => {
+                      const nextGroup = e.target.value;
+                      setGroupCardsFilterGroup(nextGroup);
+                      const allowedCategories = nextGroup === 'all' ? categoryOptions : categoriesByGroup[nextGroup] || [];
+                      if (groupCardsFilterCategory !== 'all' && !allowedCategories.includes(groupCardsFilterCategory)) {
+                        setGroupCardsFilterCategory('all');
+                      }
+                    }}
+                    className="w-full px-3 py-2 border rounded bg-white"
+                  >
+                    <option value="all">All Groups</option>
+                    {groupOptions.map((group) => (
+                      <option key={group} value={group}>
+                        {group}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={groupCardsFilterCategory}
+                    onChange={(e) => setGroupCardsFilterCategory(e.target.value)}
+                    className="w-full px-3 py-2 border rounded bg-white"
+                  >
+                    <option value="all">All Categories</option>
+                    {groupCardsCategoryOptions.map((category) => (
+                      <option key={category} value={category}>
+                        {formatCategoryLabel(category)}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    value={groupCardsSearch}
+                    onChange={(e) => setGroupCardsSearch(e.target.value)}
+                    className="w-full px-3 py-2 border rounded"
+                    placeholder="Search by product name/category"
+                  />
+                </div>
+              </section>
+            )}
             {mode === 'group-cards' && (Object.keys(groupedCards).length === 0 ? (
               <div className="bg-white rounded-xl shadow-md p-8 text-center text-gray-600">
                 No products found from orders yet.
               </div>
+            ) : Object.keys(filteredGroupedCards).length === 0 ? (
+              <div className="bg-white rounded-xl shadow-md p-8 text-center text-gray-600">
+                No cards match the selected filter or search.
+              </div>
             ) : (
-              Object.entries(groupedCards).map(([groupName, cards]) => (
+              Object.entries(filteredGroupedCards).map(([groupName, cards]) => (
                 <section key={groupName} className="bg-white rounded-xl shadow-md p-4 md:p-6">
                   <h2 className="text-lg md:text-2xl mb-4">{groupName}</h2>
                   {Object.entries(

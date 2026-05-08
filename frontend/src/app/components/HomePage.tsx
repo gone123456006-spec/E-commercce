@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, ChevronRight, ChevronLeft, ShoppingBag } from 'lucide-react';
-import { getProducts } from '../data/products';
-import { addToCart } from '../utils/storage';
+import { Search, ChevronRight, ChevronLeft, ShoppingBag, Truck, ShieldCheck, BadgeCheck, Star } from 'lucide-react';
+import { getProductById, getProducts } from '../data/products';
+import { addToCart, getCart, getOrders } from '../utils/storage';
 import { toast } from 'sonner';
 
 const ADMIN_HOMEPAGE_BANNERS_KEY = 'admin_homepage_banners';
+const ADMIN_FLASH_DEALS_KEY = 'admin_homepage_flash_deals';
 
 const defaultBanners = [
   { id: 1, src: '/assets/images/Banner 1 .png', link: '/' },
@@ -29,6 +30,32 @@ const getHomeBanners = () => {
     return parsed.filter((banner) => banner && typeof banner.src === 'string' && banner.src.trim());
   } catch {
     return defaultBanners;
+  }
+};
+
+interface FlashDealConfig {
+  cards: Array<{ productId: string; badgeText?: string }>;
+  endAt?: string;
+}
+
+const getFlashDealConfig = (): FlashDealConfig => {
+  if (typeof window === 'undefined') return { cards: [] };
+  const runtime = (window as any).__ADMIN_FLASH_DEALS__;
+  if (runtime && typeof runtime === 'object') {
+    return {
+      cards: Array.isArray(runtime.cards) ? runtime.cards : [],
+      endAt: typeof runtime.endAt === 'string' ? runtime.endAt : ''
+    };
+  }
+  try {
+    const raw = localStorage.getItem(ADMIN_FLASH_DEALS_KEY);
+    const parsed = raw ? JSON.parse(raw) : {};
+    return {
+      cards: Array.isArray(parsed?.cards) ? parsed.cards : [],
+      endAt: typeof parsed?.endAt === 'string' ? parsed.endAt : ''
+    };
+  } catch {
+    return { cards: [] };
   }
 };
 
@@ -208,14 +235,141 @@ const shopFromHereGroups = [
   }
 ];
 
+const seasonalCampaigns = [
+  {
+    title: 'Summer Saver Week',
+    subtitle: 'Cool drinks and essentials at better prices',
+    cta: '/category/drinks-juices',
+    image: 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=1200&h=600&fit=crop'
+  },
+  {
+    title: 'Wellness Days',
+    subtitle: 'Personal care and health picks this week',
+    cta: '/category/health-pharma',
+    image: 'https://images.unsplash.com/photo-1505576399279-565b52d4ac71?w=1200&h=600&fit=crop'
+  },
+  {
+    title: 'Kitchen Stock-Up',
+    subtitle: 'Daily grocery staples for every home',
+    cta: '/category/atta-rice-dal',
+    image: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=1200&h=600&fit=crop'
+  }
+];
+const RECENTLY_VIEWED_KEY = 'recently_viewed_products';
+const SEARCH_HISTORY_KEY = 'homepage_search_history';
+const topBrands = [
+  { id: 'all', label: 'All' },
+  { id: 'snacks', label: 'SnackCo' },
+  { id: 'grocery', label: 'GroceryMart' },
+  { id: 'beauty', label: 'BeautyCare' },
+  { id: 'wellness', label: 'Wellness+' }
+];
+
+
 export function HomePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentBanner, setCurrentBanner] = useState(0);
   const [banners, setBanners] = useState(() => getHomeBanners());
   const [selectedQuantities, setSelectedQuantities] = useState<Record<string, number>>({});
+  const [cartSubtotal, setCartSubtotal] = useState(0);
+  const [brandFilter, setBrandFilter] = useState('all');
+  const [countdownNow, setCountdownNow] = useState(Date.now());
+  const [recentlyViewedIds, setRecentlyViewedIds] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem(RECENTLY_VIEWED_KEY);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed.filter((id) => typeof id === 'string') : [];
+    } catch {
+      return [];
+    }
+  });
+  const [searchHistory, setSearchHistory] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem(SEARCH_HISTORY_KEY);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed.filter((term) => typeof term === 'string') : [];
+    } catch {
+      return [];
+    }
+  });
+  const [flashDealConfig, setFlashDealConfig] = useState<FlashDealConfig>(() => getFlashDealConfig());
   const [, setProductVersion] = useState(0);
   const navigate = useNavigate();
   const liveProducts = getProducts();
+  const orders = getOrders();
+
+  const averageRating = useMemo(() => {
+    if (liveProducts.length === 0) return 0;
+    const sum = liveProducts.reduce((acc, p) => acc + p.rating, 0);
+    return sum / liveProducts.length;
+  }, [liveProducts]);
+
+  const seasonalCampaign = seasonalCampaigns[new Date().getDate() % seasonalCampaigns.length];
+
+  const flashDealProducts = useMemo(
+    () => {
+      if (flashDealConfig.cards.length > 0) {
+        return flashDealConfig.cards
+          .map((c) => liveProducts.find((p) => p.id === c.productId))
+          .filter((p): p is NonNullable<typeof p> => Boolean(p))
+          .slice(0, 10);
+      }
+      return liveProducts
+        .filter((p) => p.stock <= 20 || p.rating >= 4.8)
+        .sort((a, b) => a.stock - b.stock || b.rating - a.rating)
+        .slice(0, 10);
+    },
+    [liveProducts, flashDealConfig]
+  );
+
+  const buyAgainProducts = useMemo(() => {
+    const score = new Map<string, number>();
+    orders.forEach((order) => {
+      order.items.forEach((item) => score.set(item.productId, (score.get(item.productId) || 0) + item.quantity));
+    });
+    return Array.from(score.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([id]) => liveProducts.find((p) => p.id === id))
+      .filter((p): p is NonNullable<typeof p> => Boolean(p))
+      .slice(0, 10);
+  }, [orders, liveProducts]);
+
+  const recentlyViewedProducts = useMemo(() => {
+    const fromViewed = recentlyViewedIds
+      .map((id) => liveProducts.find((p) => p.id === id))
+      .filter((p): p is NonNullable<typeof p> => Boolean(p));
+    if (fromViewed.length > 0) return fromViewed.slice(0, 10);
+    const fromCart = getCart().map((item) => liveProducts.find((p) => p.id === item.productId)).filter((p): p is NonNullable<typeof p> => Boolean(p));
+    return fromCart.slice(0, 10);
+  }, [liveProducts, cartSubtotal, recentlyViewedIds]);
+
+  const recommendedProducts = useMemo(() => {
+    if (searchHistory.length > 0) {
+      const terms = searchHistory.slice(0, 5).map((t) => t.toLowerCase());
+      const bySearch = liveProducts.filter((p) => {
+        const haystack = `${p.name} ${p.description} ${p.category}`.toLowerCase();
+        return terms.some((term) => haystack.includes(term));
+      });
+      if (bySearch.length > 0) return bySearch.slice(0, 10);
+    }
+    const orderedCategories = new Set<string>();
+    orders.forEach((order) => {
+      order.items.forEach((item) => {
+        const p = liveProducts.find((prod) => prod.id === item.productId);
+        if (p) orderedCategories.add(p.category);
+      });
+    });
+    const base = liveProducts.filter((p) => orderedCategories.has(p.category));
+    return (base.length ? base : liveProducts).slice(0, 10);
+  }, [orders, liveProducts, searchHistory]);
+
+  const brandFilteredProducts = useMemo(() => {
+    if (brandFilter === 'all') return liveProducts.slice(0, 14);
+    if (brandFilter === 'snacks') return liveProducts.filter((p) => snacksAndDrinksCategories.some((c) => c.id === p.category)).slice(0, 14);
+    if (brandFilter === 'grocery') return liveProducts.filter((p) => groceryAndKitchenCategories.some((c) => c.id === p.category)).slice(0, 14);
+    if (brandFilter === 'beauty') return liveProducts.filter((p) => beautyAndPersonalCareCategories.some((c) => c.id === p.category)).slice(0, 14);
+    return liveProducts.filter((p) => p.category.includes('health') || p.category.includes('wellness')).slice(0, 14);
+  }, [brandFilter, liveProducts]);
 
   useEffect(() => {
     if (banners.length <= 1) return;
@@ -225,9 +379,11 @@ export function HomePage() {
     return () => clearInterval(timer);
   }, [banners.length]);
 
+
   useEffect(() => {
     const onProductsUpdated = () => {
       setBanners(getHomeBanners());
+      setFlashDealConfig(getFlashDealConfig());
       setProductVersion((v) => v + 1);
     };
     window.addEventListener('productsUpdated', onProductsUpdated);
@@ -239,6 +395,28 @@ export function HomePage() {
       setCurrentBanner(0);
     }
   }, [banners.length, currentBanner]);
+
+  useEffect(() => {
+    const syncSubtotal = () => {
+      const subtotal = getCart().reduce((sum, item) => {
+        const p = getProductById(item.productId);
+        return sum + (p?.price || 0) * item.quantity;
+      }, 0);
+      setCartSubtotal(subtotal);
+    };
+    syncSubtotal();
+    window.addEventListener('cartUpdated', syncSubtotal);
+    window.addEventListener('storage', syncSubtotal);
+    return () => {
+      window.removeEventListener('cartUpdated', syncSubtotal);
+      window.removeEventListener('storage', syncSubtotal);
+    };
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setCountdownNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const nextBanner = () => {
     if (banners.length === 0) return;
@@ -252,10 +430,37 @@ export function HomePage() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+    const q = searchQuery.trim();
+    if (q) {
+      const nextHistory = [q, ...searchHistory.filter((term) => term.toLowerCase() !== q.toLowerCase())].slice(0, 10);
+      setSearchHistory(nextHistory);
+      try {
+        localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(nextHistory));
+      } catch {
+        // no-op
+      }
+      navigate(`/search?q=${encodeURIComponent(q)}`);
     }
   };
+
+  const trackProductView = (productId: string) => {
+    const nextViewed = [productId, ...recentlyViewedIds.filter((id) => id !== productId)].slice(0, 20);
+    setRecentlyViewedIds(nextViewed);
+    try {
+      localStorage.setItem(RECENTLY_VIEWED_KEY, JSON.stringify(nextViewed));
+    } catch {
+      // no-op
+    }
+  };
+
+  const flashEndsAt = flashDealConfig.endAt ? new Date(flashDealConfig.endAt) : new Date();
+  if (!flashDealConfig.endAt) {
+    flashEndsAt.setHours(23, 59, 59, 999);
+  }
+  const remainingMs = Math.max(0, flashEndsAt.getTime() - countdownNow);
+  const hrs = String(Math.floor(remainingMs / 3600000)).padStart(2, '0');
+  const mins = String(Math.floor((remainingMs % 3600000) / 60000)).padStart(2, '0');
+  const secs = String(Math.floor((remainingMs % 60000) / 1000)).padStart(2, '0');
 
   const updateSelectedQuantity = (productId: string, nextQuantity: number) => {
     setSelectedQuantities((prev) => ({
@@ -352,7 +557,7 @@ export function HomePage() {
       </div>
 
       {/* Categories Section */}
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 py-6 sm:py-8 md:py-16">
+      <div id="shop-by-category" className="max-w-7xl mx-auto px-3 sm:px-4 py-6 sm:py-8 md:py-16">
         <div className="text-center mb-6 sm:mb-8 md:mb-12">
           <h2 className="text-xl sm:text-2xl md:text-4xl mb-2 sm:mb-3 md:mb-4">Shop by Category</h2>
           <p className="text-sm sm:text-base md:text-xl text-gray-600 px-2">
@@ -560,8 +765,146 @@ export function HomePage() {
         </div>
       </div>
 
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 pb-4">
+        <div className="relative overflow-hidden rounded-2xl min-h-[120px] sm:min-h-[130px] md:min-h-[140px]">
+          <img
+            src={seasonalCampaign.image}
+            alt={seasonalCampaign.title}
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-pink-600/90 via-fuchsia-500/80 to-pink-400/60" />
+          <div className="relative z-10 h-full p-4 sm:p-6 md:p-8 flex flex-col justify-center max-w-xl">
+            <p className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white drop-shadow-sm">
+              {seasonalCampaign.title}
+            </p>
+            <p className="text-sm sm:text-base md:text-lg text-pink-50 mt-1 sm:mt-2">
+              {seasonalCampaign.subtitle}
+            </p>
+            <Link
+              to={seasonalCampaign.cta}
+              className="inline-flex mt-3 sm:mt-4 w-fit px-4 sm:px-5 py-2 rounded-lg bg-white text-pink-700 text-sm sm:text-base font-semibold hover:bg-pink-50 transition-colors"
+            >
+              Shop Campaign
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      <div id="flash-deals" className="max-w-7xl mx-auto px-3 sm:px-4 pb-6">
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">Flash Deals</h3>
+          <div className="text-xs sm:text-sm font-semibold text-red-600 bg-red-50 px-2.5 py-1 rounded">Ends in {hrs}:{mins}:{secs}</div>
+        </div>
+        <div className="overflow-x-auto no-scrollbar">
+          <div className="flex w-max gap-3">
+            {flashDealProducts.map((product) => (
+              <div key={`flash-${product.id}`} className="min-w-[180px] sm:min-w-[210px] bg-white border rounded-xl p-2.5">
+                <Link to={`/product/${product.id}`} onClick={() => trackProductView(product.id)}>
+                  <div className="relative">
+                    <img src={product.image} alt={product.name} className="w-full h-28 sm:h-32 object-cover rounded-lg mb-2" />
+                    {(flashDealConfig.cards.find((c) => c.productId === product.id)?.badgeText || (product.stock <= 20 ? 'Low Stock' : 'Flash Deal')) && (
+                      <span className="absolute top-1 left-1 text-[10px] px-1.5 py-0.5 bg-red-600 text-white rounded">
+                        {flashDealConfig.cards.find((c) => c.productId === product.id)?.badgeText || (product.stock <= 20 ? 'Low Stock' : 'Flash Deal')}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs sm:text-sm font-semibold text-gray-900 line-clamp-2">{product.name}</p>
+                </Link>
+                <p className="mt-1 text-sm font-bold text-green-700">₹{product.price}</p>
+                <button onClick={() => handleAddToCart(product.id)} className="mt-2 w-full px-3 py-1.5 text-xs sm:text-sm bg-green-600 text-yellow-100 rounded-lg">
+                  Add to Cart
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Buying History - Priority Position */}
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 pb-6">
+        <div className="bg-white rounded-xl border border-green-200 p-3 sm:p-4">
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="text-sm sm:text-base md:text-lg font-semibold text-gray-900">Your Buying History</h4>
+            <span className="text-[11px] sm:text-xs px-2 py-1 rounded-full bg-green-100 text-green-700">Buy Again</span>
+          </div>
+          <div className="overflow-x-auto no-scrollbar">
+            <div className="flex w-max gap-2.5">
+              {buyAgainProducts.length > 0 ? buyAgainProducts.map((p) => (
+                <Link key={`history-${p.id}`} to={`/product/${p.id}`} onClick={() => trackProductView(p.id)} className="min-w-[150px] sm:min-w-[190px] border rounded-lg p-2 bg-white">
+                  <img src={p.image} alt={p.name} className="w-full h-24 sm:h-28 object-cover rounded-md mb-1.5" />
+                  <p className="text-xs sm:text-sm line-clamp-2">{p.name}</p>
+                  <p className="text-sm font-bold text-green-700 mt-1">₹{p.price}</p>
+                </Link>
+              )) : (
+                <p className="text-xs sm:text-sm text-gray-500">No buying history yet. Place some orders to see this section.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="personalized-sections" className="max-w-7xl mx-auto px-3 sm:px-4 pb-6 space-y-4">
+        {[
+          { title: 'Recently Viewed', products: recentlyViewedProducts },
+          { title: 'Recommended for You', products: recommendedProducts }
+        ].map((section) => (
+          <div
+            key={section.title}
+            className={`rounded-xl p-3 sm:p-4 border ${
+              section.title === 'Recently Viewed'
+                ? 'bg-gradient-to-r from-violet-50 to-fuchsia-50 border-violet-200'
+                : 'bg-white'
+            }`}
+          >
+            <h4 className="text-sm sm:text-base md:text-lg font-semibold mb-2">{section.title}</h4>
+            <div className="overflow-x-auto no-scrollbar">
+              <div className="flex w-max gap-2.5">
+                {section.products.length > 0 ? section.products.map((p) => (
+                  <Link key={`${section.title}-${p.id}`} to={`/product/${p.id}`} onClick={() => trackProductView(p.id)} className="min-w-[150px] sm:min-w-[190px] border rounded-lg p-2">
+                    <img src={p.image} alt={p.name} className="w-full h-24 sm:h-28 object-cover rounded-md mb-1.5" />
+                    <p className="text-xs sm:text-sm line-clamp-2">{p.name}</p>
+                    <p className="text-sm font-bold text-green-700 mt-1">₹{p.price}</p>
+                  </Link>
+                )) : (
+                  <p className="text-xs sm:text-sm text-gray-500">No data yet. Start ordering to personalize this section.</p>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div id="top-brands" className="max-w-7xl mx-auto px-3 sm:px-4 pb-6">
+        <h3 className="text-lg sm:text-xl md:text-2xl font-bold mb-3">Top Brands</h3>
+        <div className="overflow-x-auto no-scrollbar mb-3">
+          <div className="flex w-max gap-2">
+            {topBrands.map((brand) => (
+              <button
+                key={brand.id}
+                type="button"
+                onClick={() => setBrandFilter(brand.id)}
+                className={`px-3 py-2 rounded-lg border text-xs sm:text-sm ${brandFilter === brand.id ? 'bg-green-600 text-yellow-100 border-green-600' : 'bg-white text-gray-700 border-gray-300'}`}
+              >
+                {brand.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="overflow-x-auto no-scrollbar">
+          <div className="flex w-max gap-3">
+            {brandFilteredProducts.map((p) => (
+              <Link key={`brand-${p.id}`} to={`/product/${p.id}`} onClick={() => trackProductView(p.id)} className="min-w-[170px] sm:min-w-[200px] bg-white border rounded-xl p-2.5">
+                <img src={p.image} alt={p.name} className="w-full h-28 object-cover rounded-lg mb-2" />
+                <p className="text-xs sm:text-sm line-clamp-2">{p.name}</p>
+                <p className="text-sm font-bold text-green-700 mt-1">₹{p.price}</p>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </div>
+
       {/* Shop From Here */}
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 pb-8 sm:pb-10 md:pb-14">
+      <div id="shop-from-here" className="max-w-7xl mx-auto px-3 sm:px-4 pt-3 sm:pt-4 md:pt-5 pb-8 sm:pb-10 md:pb-14">
         <div className="mb-6 flex items-center justify-center gap-2 sm:gap-3">
           <ShoppingBag className="w-5 h-5 sm:w-6 sm:h-6 text-green-700 shop-bag-bounce" />
           <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 text-center">
@@ -579,6 +922,16 @@ export function HomePage() {
                 if (aCustom !== bCustom) return bCustom - aCustom;
                 return b.rating - a.rating || a.price - b.price;
               });
+            const primaryRowProducts = groupProducts;
+            const secondaryRowProducts = groupProducts.length > 0
+              ? [...groupProducts.slice(6), ...groupProducts.slice(0, 6)]
+              : [];
+            const tertiaryRowProducts = groupProducts.length > 0
+              ? [...groupProducts.slice(12), ...groupProducts.slice(0, 12)]
+              : [];
+            const quaternaryRowProducts = groupProducts.length > 0
+              ? [...groupProducts.slice(18), ...groupProducts.slice(0, 18)]
+              : [];
 
             return (
               <section key={group.id}>
@@ -587,7 +940,7 @@ export function HomePage() {
                 </h4>
                 <div className="overflow-x-auto no-scrollbar">
                   <div className="flex w-max gap-3 sm:gap-4">
-                    {groupProducts.map((product, index) => {
+                    {primaryRowProducts.map((product, index) => {
                       const mrp = Math.round(product.price * 1.15);
                       const discountPercent = Math.round(((mrp - product.price) / mrp) * 100);
                       const selectedQty = getSelectedQuantity(product.id);
@@ -597,7 +950,7 @@ export function HomePage() {
                           key={`${product.id}-${index}`}
                           className="min-w-[180px] sm:min-w-[200px] md:min-w-[220px] bg-white border border-rose-100 rounded-xl p-2.5 sm:p-3 shadow-sm"
                         >
-                          <Link to={`/product/${product.id}`} className="block">
+                          <Link to={`/product/${product.id}`} onClick={() => trackProductView(product.id)} className="block">
                             <img
                               src={product.image}
                               alt={product.name}
@@ -649,48 +1002,272 @@ export function HomePage() {
                     })}
                   </div>
                 </div>
+                {secondaryRowProducts.length > 0 && (
+                  <div className="overflow-x-auto no-scrollbar mt-3">
+                    <div className="flex w-max gap-3 sm:gap-4">
+                      {secondaryRowProducts.map((product, index) => {
+                        const mrp = Math.round(product.price * 1.15);
+                        const discountPercent = Math.round(((mrp - product.price) / mrp) * 100);
+                        const selectedQty = getSelectedQuantity(product.id);
+
+                        return (
+                          <div
+                            key={`${group.id}-extra-${product.id}-${index}`}
+                            className="min-w-[180px] sm:min-w-[200px] md:min-w-[220px] bg-white border border-rose-100 rounded-xl p-2.5 sm:p-3 shadow-sm"
+                          >
+                            <Link to={`/product/${product.id}`} onClick={() => trackProductView(product.id)} className="block">
+                              <img
+                                src={product.image}
+                                alt={product.name}
+                                className="w-full h-28 sm:h-32 md:h-36 object-cover rounded-lg mb-2"
+                              />
+                              <p className="text-xs sm:text-sm font-semibold text-gray-900 line-clamp-2 min-h-[2.2rem]">
+                                {product.name}
+                              </p>
+                            </Link>
+
+                            <div className="mt-2 flex items-center gap-2">
+                              <p className="text-sm sm:text-base font-bold text-green-700">₹{product.price}</p>
+                              <p className="text-xs text-gray-400 line-through">₹{mrp}</p>
+                              <span className="text-[10px] sm:text-xs text-emerald-700 font-semibold">{discountPercent}% OFF</span>
+                            </div>
+
+                            <div className="mt-2 flex items-center justify-between">
+                              <p className="text-xs sm:text-sm text-gray-600">⭐ {product.rating.toFixed(1)}</p>
+                              <div className="inline-flex items-center border rounded-md overflow-hidden">
+                                <button
+                                  type="button"
+                                  onClick={() => updateSelectedQuantity(product.id, selectedQty - 1)}
+                                  className="px-2 py-1 text-sm hover:bg-gray-100"
+                                  aria-label={`Decrease quantity for ${product.name}`}
+                                >
+                                  -
+                                </button>
+                                <span className="px-2 py-1 text-xs sm:text-sm min-w-[28px] text-center">{selectedQty}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => updateSelectedQuantity(product.id, selectedQty + 1)}
+                                  className="px-2 py-1 text-sm hover:bg-gray-100"
+                                  aria-label={`Increase quantity for ${product.name}`}
+                                >
+                                  +
+                                </button>
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => handleAddToCart(product.id)}
+                              className="mt-3 w-full px-3 py-2 text-xs sm:text-sm bg-green-600 text-yellow-100 rounded-lg hover:bg-green-500 transition-colors"
+                            >
+                              Add to Cart
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                {tertiaryRowProducts.length > 0 && (
+                  <div className="overflow-x-auto no-scrollbar mt-3">
+                    <div className="flex w-max gap-3 sm:gap-4">
+                      {tertiaryRowProducts.map((product, index) => {
+                        const mrp = Math.round(product.price * 1.15);
+                        const discountPercent = Math.round(((mrp - product.price) / mrp) * 100);
+                        const selectedQty = getSelectedQuantity(product.id);
+
+                        return (
+                          <div
+                            key={`${group.id}-extra2-${product.id}-${index}`}
+                            className="min-w-[180px] sm:min-w-[200px] md:min-w-[220px] bg-white border border-rose-100 rounded-xl p-2.5 sm:p-3 shadow-sm"
+                          >
+                            <Link to={`/product/${product.id}`} onClick={() => trackProductView(product.id)} className="block">
+                              <img
+                                src={product.image}
+                                alt={product.name}
+                                className="w-full h-28 sm:h-32 md:h-36 object-cover rounded-lg mb-2"
+                              />
+                              <p className="text-xs sm:text-sm font-semibold text-gray-900 line-clamp-2 min-h-[2.2rem]">
+                                {product.name}
+                              </p>
+                            </Link>
+
+                            <div className="mt-2 flex items-center gap-2">
+                              <p className="text-sm sm:text-base font-bold text-green-700">₹{product.price}</p>
+                              <p className="text-xs text-gray-400 line-through">₹{mrp}</p>
+                              <span className="text-[10px] sm:text-xs text-emerald-700 font-semibold">{discountPercent}% OFF</span>
+                            </div>
+
+                            <div className="mt-2 flex items-center justify-between">
+                              <p className="text-xs sm:text-sm text-gray-600">⭐ {product.rating.toFixed(1)}</p>
+                              <div className="inline-flex items-center border rounded-md overflow-hidden">
+                                <button
+                                  type="button"
+                                  onClick={() => updateSelectedQuantity(product.id, selectedQty - 1)}
+                                  className="px-2 py-1 text-sm hover:bg-gray-100"
+                                  aria-label={`Decrease quantity for ${product.name}`}
+                                >
+                                  -
+                                </button>
+                                <span className="px-2 py-1 text-xs sm:text-sm min-w-[28px] text-center">{selectedQty}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => updateSelectedQuantity(product.id, selectedQty + 1)}
+                                  className="px-2 py-1 text-sm hover:bg-gray-100"
+                                  aria-label={`Increase quantity for ${product.name}`}
+                                >
+                                  +
+                                </button>
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => handleAddToCart(product.id)}
+                              className="mt-3 w-full px-3 py-2 text-xs sm:text-sm bg-green-600 text-yellow-100 rounded-lg hover:bg-green-500 transition-colors"
+                            >
+                              Add to Cart
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                {quaternaryRowProducts.length > 0 && (
+                  <div className="overflow-x-auto no-scrollbar mt-3">
+                    <div className="flex w-max gap-3 sm:gap-4">
+                      {quaternaryRowProducts.map((product, index) => {
+                        const mrp = Math.round(product.price * 1.15);
+                        const discountPercent = Math.round(((mrp - product.price) / mrp) * 100);
+                        const selectedQty = getSelectedQuantity(product.id);
+
+                        return (
+                          <div
+                            key={`${group.id}-extra3-${product.id}-${index}`}
+                            className="min-w-[180px] sm:min-w-[200px] md:min-w-[220px] bg-white border border-rose-100 rounded-xl p-2.5 sm:p-3 shadow-sm"
+                          >
+                            <Link to={`/product/${product.id}`} onClick={() => trackProductView(product.id)} className="block">
+                              <img
+                                src={product.image}
+                                alt={product.name}
+                                className="w-full h-28 sm:h-32 md:h-36 object-cover rounded-lg mb-2"
+                              />
+                              <p className="text-xs sm:text-sm font-semibold text-gray-900 line-clamp-2 min-h-[2.2rem]">
+                                {product.name}
+                              </p>
+                            </Link>
+
+                            <div className="mt-2 flex items-center gap-2">
+                              <p className="text-sm sm:text-base font-bold text-green-700">₹{product.price}</p>
+                              <p className="text-xs text-gray-400 line-through">₹{mrp}</p>
+                              <span className="text-[10px] sm:text-xs text-emerald-700 font-semibold">{discountPercent}% OFF</span>
+                            </div>
+
+                            <div className="mt-2 flex items-center justify-between">
+                              <p className="text-xs sm:text-sm text-gray-600">⭐ {product.rating.toFixed(1)}</p>
+                              <div className="inline-flex items-center border rounded-md overflow-hidden">
+                                <button
+                                  type="button"
+                                  onClick={() => updateSelectedQuantity(product.id, selectedQty - 1)}
+                                  className="px-2 py-1 text-sm hover:bg-gray-100"
+                                  aria-label={`Decrease quantity for ${product.name}`}
+                                >
+                                  -
+                                </button>
+                                <span className="px-2 py-1 text-xs sm:text-sm min-w-[28px] text-center">{selectedQty}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => updateSelectedQuantity(product.id, selectedQty + 1)}
+                                  className="px-2 py-1 text-sm hover:bg-gray-100"
+                                  aria-label={`Increase quantity for ${product.name}`}
+                                >
+                                  +
+                                </button>
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => handleAddToCart(product.id)}
+                              className="mt-3 w-full px-3 py-2 text-xs sm:text-sm bg-green-600 text-yellow-100 rounded-lg hover:bg-green-500 transition-colors"
+                            >
+                              Add to Cart
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </section>
             );
           })}
         </div>
       </div>
 
-      {/* Features Section */}
-      <div className="bg-yellow-50/40 py-6 sm:py-8 md:py-16">
+
+      <div className="bg-yellow-50/40 py-6 sm:py-8 md:py-12">
         <div className="max-w-7xl mx-auto px-3 sm:px-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 md:gap-8 text-center">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 text-center">
             <div className="p-4 md:p-6">
-              <div className="w-14 h-14 md:w-16 md:h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-3 md:mb-4">
-                <svg className="w-7 h-7 md:w-8 md:h-8 text-yellow-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
+              <div className="w-12 h-12 md:w-14 md:h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2 md:mb-3">
+                <BadgeCheck className="w-6 h-6 text-green-700" />
               </div>
-              <h3 className="text-lg md:text-xl mb-2">Quality Products</h3>
-              <p className="text-sm md:text-base text-gray-600">Handpicked items with guaranteed quality</p>
+              <h3 className="text-sm md:text-lg mb-1">Fresh Products</h3>
+              <p className="text-xs md:text-sm text-gray-600">Handpicked and quality checked daily.</p>
             </div>
-
             <div className="p-4 md:p-6">
-              <div className="w-14 h-14 md:w-16 md:h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3 md:mb-4">
-                <svg className="w-7 h-7 md:w-8 md:h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+              <div className="w-12 h-12 md:w-14 md:h-14 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2 md:mb-3">
+                <Truck className="w-6 h-6 text-blue-700" />
               </div>
-              <h3 className="text-lg md:text-xl mb-2">Best Prices</h3>
-              <p className="text-sm md:text-base text-gray-600">Competitive pricing on all products</p>
+              <h3 className="text-sm md:text-lg mb-1">Fast Delivery</h3>
+              <p className="text-xs md:text-sm text-gray-600">Quick dispatch inside your local zone.</p>
             </div>
-
             <div className="p-4 md:p-6">
-              <div className="w-14 h-14 md:w-16 md:h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3 md:mb-4">
-                <svg className="w-7 h-7 md:w-8 md:h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
+              <div className="w-12 h-12 md:w-14 md:h-14 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-2 md:mb-3">
+                <ShoppingBag className="w-6 h-6 text-purple-700" />
               </div>
-              <h3 className="text-lg md:text-xl mb-2">Fast Delivery</h3>
-              <p className="text-sm md:text-base text-gray-600">Quick and reliable shipping</p>
+              <h3 className="text-sm md:text-lg mb-1">Easy Returns</h3>
+              <p className="text-xs md:text-sm text-gray-600">Simple return flow on eligible products.</p>
+            </div>
+            <div className="p-4 md:p-6">
+              <div className="w-12 h-12 md:w-14 md:h-14 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-2 md:mb-3">
+                <ShieldCheck className="w-6 h-6 text-emerald-700" />
+              </div>
+              <h3 className="text-sm md:text-lg mb-1">Secure Payment</h3>
+              <p className="text-xs md:text-sm text-gray-600">Protected checkout and trusted handling.</p>
             </div>
           </div>
         </div>
       </div>
+
+      <div id="testimonials" className="max-w-7xl mx-auto px-3 sm:px-4 pb-8">
+        <div className="bg-white rounded-xl border p-4 sm:p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <h3 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">Customer Love</h3>
+            <div className="inline-flex items-center gap-1.5 bg-yellow-50 px-3 py-1.5 rounded-full">
+              <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+              <span className="text-sm font-semibold text-gray-800">{averageRating.toFixed(1)} / 5 average rating</span>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="rounded-lg border p-3">
+              <p className="text-sm text-gray-700">&quot;Very fast delivery and fresh products every time!&quot;</p>
+              <p className="text-xs text-gray-500 mt-2">- Priya, Tawang</p>
+            </div>
+            <div className="rounded-lg border p-3">
+              <p className="text-sm text-gray-700">&quot;Cart and reorder process is super easy. Loved it.&quot;</p>
+              <p className="text-xs text-gray-500 mt-2">- Rahul, Tawang</p>
+            </div>
+            <div className="rounded-lg border p-3">
+              <p className="text-sm text-gray-700">&quot;Good discounts and smooth shopping experience.&quot;</p>
+              <p className="text-xs text-gray-500 mt-2">- Sonam, Tawang</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div >
   );
 }

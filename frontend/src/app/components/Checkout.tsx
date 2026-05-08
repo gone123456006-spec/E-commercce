@@ -8,6 +8,11 @@ import { toast } from 'sonner';
 
 type CheckoutStep = 'address' | 'review' | 'payment';
 
+const FIXED_CITY = 'Tawang';
+const FIXED_STATE = 'Arunachal Pradesh';
+const FIXED_PINCODE = '790104';
+const MOBILE_REGEX = /^[6-9]\d{9}$/;
+
 export function Checkout() {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState<CheckoutStep>('address');
@@ -24,9 +29,9 @@ export function Checkout() {
     name: '',
     mobile: '',
     house: '',
-    city: '',
-    state: '',
-    pincode: ''
+    city: FIXED_CITY,
+    state: FIXED_STATE,
+    pincode: FIXED_PINCODE
   });
 
   useEffect(() => {
@@ -86,7 +91,20 @@ export function Checkout() {
       return;
     }
 
-    const savedAddr = saveAddress(newAddress);
+    const mobileDigits = newAddress.mobile.replace(/\D/g, '');
+    if (!MOBILE_REGEX.test(mobileDigits)) {
+      toast.error('Please enter a valid 10-digit mobile number');
+      return;
+    }
+
+    const normalizedAddress = {
+      ...newAddress,
+      mobile: mobileDigits,
+      city: FIXED_CITY,
+      state: FIXED_STATE,
+      pincode: FIXED_PINCODE
+    };
+    const savedAddr = saveAddress(normalizedAddress);
     setSelectedAddress(savedAddr);
     loadAddresses();
     setShowAddressForm(false);
@@ -94,9 +112,9 @@ export function Checkout() {
       name: '',
       mobile: '',
       house: '',
-      city: '',
-      state: '',
-      pincode: ''
+      city: FIXED_CITY,
+      state: FIXED_STATE,
+      pincode: FIXED_PINCODE
     });
     toast.success('Address added successfully');
   };
@@ -257,7 +275,13 @@ export function Checkout() {
                         type="tel"
                         placeholder="Mobile Number"
                         value={newAddress.mobile}
-                        onChange={(e) => setNewAddress({ ...newAddress, mobile: e.target.value })}
+                        onChange={(e) => {
+                          const digitsOnly = e.target.value.replace(/\D/g, '').slice(0, 10);
+                          setNewAddress({ ...newAddress, mobile: digitsOnly });
+                        }}
+                        inputMode="numeric"
+                        maxLength={10}
+                        pattern="[0-9]{10}"
                         className="px-3 md:px-4 py-2.5 md:py-3 text-sm md:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                       />
                       <input
@@ -271,23 +295,43 @@ export function Checkout() {
                         type="text"
                         placeholder="City"
                         value={newAddress.city}
-                        onChange={(e) => setNewAddress({ ...newAddress, city: e.target.value })}
-                        className="px-3 md:px-4 py-2.5 md:py-3 text-sm md:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                        disabled
+                        className="px-3 md:px-4 py-2.5 md:py-3 text-sm md:text-base border border-gray-300 rounded-lg bg-gray-100 text-gray-700 cursor-not-allowed"
                       />
                       <input
                         type="text"
                         placeholder="State"
                         value={newAddress.state}
-                        onChange={(e) => setNewAddress({ ...newAddress, state: e.target.value })}
-                        className="px-3 md:px-4 py-2.5 md:py-3 text-sm md:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                        disabled
+                        className="px-3 md:px-4 py-2.5 md:py-3 text-sm md:text-base border border-gray-300 rounded-lg bg-gray-100 text-gray-700 cursor-not-allowed"
                       />
                       <input
                         type="text"
                         placeholder="Pincode"
                         value={newAddress.pincode}
-                        onChange={(e) => setNewAddress({ ...newAddress, pincode: e.target.value })}
-                        className="px-3 md:px-4 py-2.5 md:py-3 text-sm md:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                        disabled
+                        className="px-3 md:px-4 py-2.5 md:py-3 text-sm md:text-base border border-gray-300 rounded-lg bg-gray-100 text-gray-700 cursor-not-allowed"
                       />
+                      <div className="md:col-span-2 flex items-center gap-2 rounded-lg bg-green-50 border border-green-200 px-3 py-2">
+                        <MapPin className="w-4 h-4 md:w-5 md:h-5 text-green-700 animate-bounce" />
+                        <p className="text-xs md:text-sm font-bold text-green-700">
+                          Your order will be within the range of 5km from your existing location.
+                        </p>
+                      </div>
+                      <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <div className="rounded-lg border border-gray-200 bg-white px-3 py-2">
+                          <p className="text-xs font-semibold text-gray-800">Fast Delivery</p>
+                          <p className="text-[11px] text-gray-600">Most orders reach in 20-40 minutes.</p>
+                        </div>
+                        <div className="rounded-lg border border-gray-200 bg-white px-3 py-2">
+                          <p className="text-xs font-semibold text-gray-800">Local Service Area</p>
+                          <p className="text-[11px] text-gray-600">Delivery support only within Tawang region.</p>
+                        </div>
+                        <div className="rounded-lg border border-gray-200 bg-white px-3 py-2">
+                          <p className="text-xs font-semibold text-gray-800">Live Order Updates</p>
+                          <p className="text-[11px] text-gray-600">Track order status from pending to delivered.</p>
+                        </div>
+                      </div>
                     </div>
                     <div className="flex flex-col sm:flex-row gap-3 md:gap-4 mt-3 md:mt-4">
                       <button
