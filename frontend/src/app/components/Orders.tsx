@@ -7,6 +7,7 @@ import type { Order } from '../utils/storage';
 import { toast } from 'sonner';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+const INVOICE_LOGO_URL = '/assets/images/websites logo (2).png';
 
 const statusLabelMap: Record<Order['status'], string> = {
   pending: 'Pending',
@@ -47,20 +48,26 @@ function csvEscape(value: string | number) {
   return `"${str.replace(/"/g, '""')}"`;
 }
 
-function getReturnPolicyByCategory(category?: string) {
-  const nonReturnableCategories = new Set([
-    'vegetables-fruits',
-    'dairy-bread-eggs',
-    'chicken-meat-fish',
-    'ice-creams'
-  ]);
-  if (category && nonReturnableCategories.has(category)) {
-    return 'Non-returnable (fresh/perishable item)';
-  }
-  return '7-day return available (unused & sealed pack)';
+const INVOICE_POLICY_LINES = [
+  'Return policy: Return request allowed only within 15 minutes of order placement.',
+  'Return accepted only for expired item or default/defective item.',
+  'No return for any other reason.',
+  'No exchange available.',
+  'For return call: 8003759454'
+];
+
+async function getImageDataUrl(url: string) {
+  const response = await fetch(url);
+  const blob = await response.blob();
+  return await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(String(reader.result || ''));
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
 }
 
-function downloadInvoice(order: Order) {
+async function downloadInvoice(order: Order) {
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -74,74 +81,78 @@ function downloadInvoice(order: Order) {
 
   // Header Section
   doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-  doc.rect(0, 0, 210, 40, 'F');
+  doc.rect(0, 0, 210, 30, 'F');
+
+  try {
+    const logoData = await getImageDataUrl(INVOICE_LOGO_URL);
+    if (logoData) {
+      doc.addImage(logoData, 'PNG', 14, 8, 30, 12);
+    }
+  } catch {
+    // If logo fails, fallback text keeps invoice usable.
+  }
 
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(24);
   doc.setFont('helvetica', 'bold');
-  doc.text('GajuStore', 14, 25);
+  // Keep only logo in header (no duplicate brand text).
 
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
-  doc.text('Tax Invoice/Bill', 196, 25, { align: 'right' });
+  doc.text('Tax Invoice/Bill', 196, 19, { align: 'right' });
 
   // Order Details Section
   doc.setTextColor(textColor[0], textColor[1], textColor[2]);
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
-  doc.text('Order Details', 14, 55);
+  doc.text('Order Details', 14, 42);
 
   doc.setFont('helvetica', 'normal');
-  doc.text(`Order ID: ${order.id}`, 14, 62);
-  doc.text(`Order Date: ${fmtDate(order.date)}`, 14, 68);
-  doc.text(`Invoice Date: ${fmtDate(new Date().toISOString())}`, 14, 74);
+  doc.text(`Order ID: ${order.id}`, 14, 49);
+  doc.text(`Order Date: ${fmtDate(order.date)}`, 14, 55);
+  doc.text(`Invoice Date: ${fmtDate(new Date().toISOString())}`, 14, 61);
 
   // Billing / Delivery Address Box
   doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
-  doc.rect(120, 48, 76, 32, 'F');
+  doc.rect(120, 36, 76, 30, 'F');
 
   doc.setFont('helvetica', 'bold');
-  doc.text('Delivery Address:', 124, 55);
+  doc.text('Delivery Address:', 124, 43);
   doc.setFont('helvetica', 'normal');
-  doc.text(`${order.address.name}`, 124, 61);
-  doc.text(`${order.address.house}`, 124, 67);
-  doc.text(`${order.address.city}, ${order.address.state} - ${order.address.pincode}`, 124, 73);
-  doc.text(`Phone: ${order.address.mobile}`, 124, 79);
+  doc.text(`${order.address.name}`, 124, 49);
+  doc.text(`${order.address.house}`, 124, 55);
+  doc.text(`${order.address.city}, ${order.address.state} - ${order.address.pincode}`, 124, 61);
+  doc.text(`Phone: ${order.address.mobile}`, 124, 67);
 
   // Table Data Preparation
   const tableData: (string | number)[][] = [];
-  const returnPolicyLines: string[] = [];
   let index = 1;
   order.items.forEach((item) => {
     const product = getProductById(item.productId);
     if (!product) return;
-    const returnPolicy = getReturnPolicyByCategory(product.category);
     tableData.push([
       index++,
       product.name,
       `Rs. ${product.price.toFixed(2)}`,
       item.quantity,
-      `Rs. ${(product.price * item.quantity).toFixed(2)}`,
-      returnPolicy
+      `Rs. ${(product.price * item.quantity).toFixed(2)}`
     ]);
-    returnPolicyLines.push(`${product.name}: ${returnPolicy}`);
   });
 
   // Product Table
   autoTable(doc, {
-    startY: 90,
-    head: [['Sl. No', 'Description', 'Unit Price', 'Qty', 'Total', 'Return Policy']],
+    startY: 74,
+    head: [['Sl. No', 'Description', 'Unit Price', 'Qty', 'Total']],
     body: tableData,
-    theme: 'striped',
-    headStyles: { fillColor: primaryColor as [number, number, number], textColor: 255, fontStyle: 'bold' },
-    styles: { fontSize: 9, cellPadding: 5 },
+    theme: 'grid',
+    headStyles: { fillColor: [255, 255, 255], textColor: 30, fontStyle: 'bold', lineColor: [70, 70, 70], lineWidth: 0.2 },
+    styles: { fontSize: 9, cellPadding: 5, lineColor: [70, 70, 70], lineWidth: 0.2 },
     columnStyles: {
       0: { cellWidth: 20 },
-      1: { cellWidth: 48 },
-      2: { cellWidth: 24, halign: 'right' },
+      1: { cellWidth: 'auto' },
+      2: { cellWidth: 30, halign: 'right' },
       3: { cellWidth: 20, halign: 'center' },
-      4: { cellWidth: 24, halign: 'right' },
-      5: { cellWidth: 54 }
+      4: { cellWidth: 35, halign: 'right' }
     }
   });
 
@@ -154,11 +165,12 @@ function downloadInvoice(order: Order) {
   doc.text(`Payment Mode: ${order.paymentMethod === 'cod' ? 'Cash on Delivery' : 'Google Pay (UPI)'}`, 14, finalY + 22);
   doc.text(`Payment Status: ${order.paymentStatus}`, 14, finalY + 28);
 
+  const policyStartY = finalY + 36;
   doc.setFont('helvetica', 'bold');
-  doc.text('Return Policy (Product-wise)', 14, finalY + 36);
+  doc.text('Return / Exchange Policy', 14, policyStartY);
   doc.setFont('helvetica', 'normal');
-  returnPolicyLines.slice(0, 4).forEach((line, i) => {
-    doc.text(`- ${line}`, 14, finalY + 42 + i * 6);
+  INVOICE_POLICY_LINES.forEach((line, i) => {
+    doc.text(`- ${line}`, 14, policyStartY + 6 + i * 6);
   });
 
   // Final Total Alignment
@@ -171,7 +183,7 @@ function downloadInvoice(order: Order) {
   doc.setFontSize(8);
   doc.setFont('helvetica', 'italic');
   doc.setTextColor(150, 150, 150);
-  doc.text('Thank you for shopping with GajuStore!', 105, 280, { align: 'center' });
+  doc.text('Thank you for shopping with mybalag!', 105, 280, { align: 'center' });
   doc.text('This is a computer generated document and does not require a signature.', 105, 285, { align: 'center' });
 
   doc.save(`Invoice_${order.id}.pdf`);

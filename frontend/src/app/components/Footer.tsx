@@ -14,7 +14,7 @@ export function Footer() {
                     <div>
                         <h4 className="font-semibold mb-2">Contact</h4>
                         <p className="text-sm text-gray-300">Phone: +91 80037 59454</p>
-                        <p className="text-sm text-gray-300">Email: support@gajustore.in</p>
+                        <p className="text-sm text-gray-300">Email: support@mybalag.in</p>
                     </div>
                     <div>
                         <h4 className="font-semibold mb-2">Support Timings</h4>
@@ -28,7 +28,7 @@ export function Footer() {
                 </div>
                 <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-6">
                     <p className="text-sm md:text-base text-gray-200 font-medium">
-                        © {new Date().getFullYear()} Kiran Rasan. All rights reserved.
+                        © {new Date().getFullYear()} Kran Rason - mybalag. All rights reserved.
                     </p>
                     <a
                         href={SHOP_MAPS_URL}

@@ -47,8 +47,8 @@ export function Navbar() {
           {/* Logo - responsive sizing */}
           <a href="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity">
             <img
-              src="/assets/images/header-logo.png"
-              alt="Hover Technology"
+              src="/assets/images/websites logo (2).png"
+              alt="Website logo"
               className="h-8 sm:h-10 md:h-12 w-auto object-contain"
             />
           </a>

@@ -22,6 +22,7 @@ const groupLabelByCategory: Record<string, string> = {
   'dry-fruits-cereals': 'Grocery & Kitchen',
   'chicken-meat-fish': 'Grocery & Kitchen',
   'kitchenware-appliances': 'Grocery & Kitchen',
+  'kitchen-stock-up': 'Grocery & Kitchen',
   'bath-body': 'Beauty & Personal Care',
   'hair': 'Beauty & Personal Care',
   'skin-face': 'Beauty & Personal Care',
@@ -677,13 +678,15 @@ export function AdminOrderDashboard() {
     <div className="min-h-screen bg-yellow-50/40">
       <div className="w-full px-2 md:px-4 pt-4 md:pt-8">
         <div className="mb-4 md:mb-6 bg-white rounded-xl shadow-sm p-3 md:p-4 flex flex-wrap items-stretch gap-2">
-          <button
-            type="button"
-            onClick={handleAdminLogout}
-            className="w-full sm:w-auto sm:ml-auto px-4 py-2 rounded-lg text-sm md:text-base border border-red-600 text-red-700 hover:bg-red-50 transition-colors"
-          >
-            Logout
-          </button>
+          <div className="w-full flex items-center justify-between gap-3 mb-1">
+            <button
+              type="button"
+              onClick={handleAdminLogout}
+              className="w-auto px-4 py-2 rounded-lg text-sm md:text-base border border-red-600 text-red-700 hover:bg-red-50 transition-colors"
+            >
+              Logout
+            </button>
+          </div>
           <button
             type="button"
             onClick={() => setMode('orders')}
