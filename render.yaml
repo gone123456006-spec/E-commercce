@@ -1,0 +1,49 @@
+################################################################################
+# Render Blueprint — https://render.com/docs/blueprint-spec
+# Deploys the Node.js/Express API from the /backend subdirectory.
+#
+# HOW TO USE:
+#   1. Push this file to your repo root.
+#   2. In Render → New → Blueprint, connect the repo.
+#   3. After the service is created, go to Environment and fill in the
+#      values marked  ← SET IN RENDER DASHBOARD  below.
+################################################################################
+
+services:
+  - type: web
+    name: ecommerce-api
+    runtime: node
+    plan: free
+    region: singapore         # closest free region for India; change if needed
+    rootDir: backend
+    buildCommand: npm ci      # reproducible, faster than npm install
+    startCommand: npm start
+    healthCheckPath: /
+
+    envVars:
+      # ── Runtime ────────────────────────────────────────────────────────────
+      - key: NODE_ENV
+        value: production
+
+      # Render injects PORT automatically (10000 on free plan).
+      # Do NOT hard-code it here — the server reads process.env.PORT.
+
+      # ── Database ───────────────────────────────────────────────────────────
+      - key: MONGODB_URI
+        sync: false           # ← SET IN RENDER DASHBOARD (MongoDB Atlas URI)
+
+      # ── Auth / JWT ─────────────────────────────────────────────────────────
+      - key: JWT_SECRET
+        generateValue: true   # Render auto-generates a secure random secret
+      - key: JWT_EXPIRES_IN
+        value: 7d
+
+      # ── OTP ────────────────────────────────────────────────────────────────
+      - key: OTP_EXPIRES_IN
+        value: 10
+
+      # ── CORS ───────────────────────────────────────────────────────────────
+      # Set to your deployed frontend URL (or comma-separated list).
+      # Example: https://my-shop.vercel.app
+      - key: FRONTEND_URL
+        sync: false           # ← SET IN RENDER DASHBOARD
