@@ -1,35 +1,47 @@
 import mongoose from 'mongoose';
 
-const connectDB = async () => {
-    try {
-        const conn = await mongoose.connect(process.env.MONGODB_URI, {
-            // These options are now default in Mongoose 6+
-            // but included for clarity and backwards compatibility
-        });
+const MAX_RETRIES = 5;
+const RETRY_DELAY_MS = 5000;
 
+const connectDB = async (retryCount = 0) => {
+    const uri = process.env.MONGODB_URI;
+
+    if (!uri || typeof uri !== 'string' || !uri.trim()) {
+        console.error(
+            '❌ MONGODB_URI is missing or invalid.\n' +
+            '   Add it in your .env file (local) or Render → Environment (production).\n' +
+            '   Example: mongodb+srv://<user>:<pass>@cluster0.xxxxx.mongodb.net/ecommerce_db'
+        );
+        process.exit(1);
+    }
+
+    try {
+        const conn = await mongoose.connect(uri.trim());
         console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
 
-        // Connection event handlers
+        // ── Connection event handlers ────────────────────────────────────────
         mongoose.connection.on('error', (err) => {
-            console.error('❌ MongoDB connection error:', err);
+            console.error('❌ MongoDB runtime error:', err.message);
         });
 
         mongoose.connection.on('disconnected', () => {
-            console.log('⚠️  MongoDB disconnected');
+            console.warn('⚠️  MongoDB disconnected — Mongoose will auto-reconnect');
         });
 
-        // Graceful shutdown
-        process.on('SIGINT', async () => {
-            await mongoose.connection.close();
-            console.log('MongoDB connection closed through app termination');
-            process.exit(0);
+        mongoose.connection.on('reconnected', () => {
+            console.log('🔄 MongoDB reconnected');
         });
 
     } catch (error) {
-        console.error('❌ MongoDB Connection Error:', error.message);
-        // Retry connection after 5 seconds
-        console.log('🔄 Retrying connection in 5 seconds...');
-        setTimeout(connectDB, 5000);
+        console.error(`❌ MongoDB connection failed (attempt ${retryCount + 1}/${MAX_RETRIES}):`, error.message);
+
+        if (retryCount + 1 >= MAX_RETRIES) {
+            console.error('❌ Maximum retries reached. Exiting process.');
+            process.exit(1);
+        }
+
+        console.log(`🔄 Retrying in ${RETRY_DELAY_MS / 1000}s...`);
+        setTimeout(() => connectDB(retryCount + 1), RETRY_DELAY_MS);
     }
 };
 

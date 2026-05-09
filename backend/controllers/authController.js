@@ -1,7 +1,9 @@
 import User from '../models/User.js';
 import { generateOTP, sendOTP } from '../utils/otpService.js';
 import { generateToken } from '../utils/tokenService.js';
-import { HTTP_STATUS, ERROR_MESSAGES, SUCCESS_MESSAGES, OTP_CONFIG } from '../config/constants.js';
+import { HTTP_STATUS, ERROR_MESSAGES, SUCCESS_MESSAGES, OTP_CONFIG, ADMIN_CONFIG } from '../config/constants.js';
+
+const IS_PROD = process.env.NODE_ENV === 'production';
 
 /**
  * @route   POST /api/auth/send-otp
@@ -28,13 +30,15 @@ export const sendOTPController = async (req, res, next) => {
 
         await user.save();
 
-        // Send OTP (simulated)
+        // Send OTP (simulated — swap with real SMS in production)
         await sendOTP(mobile, otp);
 
         res.status(HTTP_STATUS.OK).json({
             message: SUCCESS_MESSAGES.OTP_SENT,
-            otp: otp, // Include for testing
-            dummyOtp: OTP_CONFIG.DUMMY_OTP
+            // Never expose real OTP in production; show only in dev/test
+            ...(IS_PROD
+                ? {}
+                : { otp, dummyOtp: OTP_CONFIG.DUMMY_OTP }),
         });
 
     } catch (error) {
@@ -56,21 +60,21 @@ export const verifyOTPController = async (req, res, next) => {
 
         if (!user) {
             return res.status(HTTP_STATUS.BAD_REQUEST).json({
-                message: ERROR_MESSAGES.USER_NOT_FOUND
+                message: ERROR_MESSAGES.USER_NOT_FOUND,
+            });
+        }
+
+        // Check OTP expiration first (avoids timing attack)
+        if (!user.otpExpires || user.otpExpires < Date.now()) {
+            return res.status(HTTP_STATUS.BAD_REQUEST).json({
+                message: ERROR_MESSAGES.OTP_EXPIRED,
             });
         }
 
         // Verify OTP
         if (user.otp !== otp) {
             return res.status(HTTP_STATUS.BAD_REQUEST).json({
-                message: ERROR_MESSAGES.INVALID_OTP
-            });
-        }
-
-        // Check OTP expiration
-        if (user.otpExpires < Date.now()) {
-            return res.status(HTTP_STATUS.BAD_REQUEST).json({
-                message: ERROR_MESSAGES.OTP_EXPIRED
+                message: ERROR_MESSAGES.INVALID_OTP,
             });
         }
 
@@ -87,8 +91,34 @@ export const verifyOTPController = async (req, res, next) => {
             token,
             user: {
                 id: user._id,
-                mobile: user.mobile
-            }
+                mobile: user.mobile,
+            },
+        });
+
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * @route   POST /api/auth/admin-login
+ * @desc    Verify admin dashboard password
+ * @access  Public
+ */
+export const adminLoginController = async (req, res, next) => {
+    try {
+        const { password } = req.body;
+
+        if (password === ADMIN_CONFIG.PASSWORD) {
+            return res.status(HTTP_STATUS.OK).json({
+                success: true,
+                message: 'Admin login successful'
+            });
+        }
+
+        return res.status(HTTP_STATUS.UNAUTHORIZED).json({
+            success: false,
+            message: 'Invalid admin password'
         });
 
     } catch (error) {

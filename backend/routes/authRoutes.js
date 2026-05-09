@@ -1,5 +1,5 @@
 import express from 'express';
-import { sendOTPController, verifyOTPController } from '../controllers/authController.js';
+import { sendOTPController, verifyOTPController, adminLoginController } from '../controllers/authController.js';
 import { validateSendOTP, validateVerifyOTP } from '../middleware/validator.js';
 
 const router = express.Router();
@@ -17,5 +17,12 @@ router.post('/send-otp', validateSendOTP, sendOTPController);
  * @access  Public
  */
 router.post('/verify-otp', validateVerifyOTP, verifyOTPController);
+
+/**
+ * @route   POST /api/auth/admin-login
+ * @desc    Verify admin dashboard password
+ * @access  Public
+ */
+router.post('/admin-login', adminLoginController);
 
 export default router;

@@ -39,3 +39,8 @@ export const JWT_CONFIG = {
     EXPIRES_IN: process.env.JWT_EXPIRES_IN || '7d',
     SECRET: process.env.JWT_SECRET || 'your_jwt_secret_key_change_this'
 };
+
+// Admin Configuration
+export const ADMIN_CONFIG = {
+    PASSWORD: process.env.ADMIN_PASSWORD || 'Ar@v1234'
+};
