@@ -72,7 +72,7 @@ const ADMIN_DELETED_CARDS_KEY = 'admin_dashboard_deleted_cards';
 const ADMIN_HOMEPAGE_BANNERS_KEY = 'admin_homepage_banners';
 const ADMIN_FLASH_DEALS_KEY = 'admin_homepage_flash_deals';
 const ADMIN_DASHBOARD_AUTH_KEY = 'admin_dashboard_authenticated';
-const ADMIN_DASHBOARD_PASSWORD = 'Ar@v1234';
+// Removing hardcoded password, fetching from backend instead
 
 interface FlashDealCardConfig {
   productId: string;
@@ -620,20 +620,45 @@ export function AdminOrderDashboard() {
     });
   };
 
-  const handleAdminLogin = (event: React.FormEvent) => {
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+
+  const handleAdminLogin = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (adminPasswordInput === ADMIN_DASHBOARD_PASSWORD) {
-      setIsAuthenticated(true);
-      setAdminPasswordError('');
-      setAdminPasswordInput('');
-      try {
-        sessionStorage.setItem(ADMIN_DASHBOARD_AUTH_KEY, 'true');
-      } catch {
-        // no-op
-      }
+    if (!adminPasswordInput) {
+      setAdminPasswordError('Please enter a password.');
       return;
     }
-    setAdminPasswordError('Invalid password. Please try again.');
+
+    setIsLoggingIn(true);
+    try {
+      // NOTE: Update the base URL if needed based on your environment setup
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${apiUrl}/api/auth/admin-login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: adminPasswordInput }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setIsAuthenticated(true);
+        setAdminPasswordError('');
+        setAdminPasswordInput('');
+        try {
+          sessionStorage.setItem(ADMIN_DASHBOARD_AUTH_KEY, 'true');
+        } catch {
+          // no-op
+        }
+      } else {
+        setAdminPasswordError(data.message || 'Invalid password. Please try again.');
+      }
+    } catch (error) {
+      console.error('Admin login error:', error);
+      setAdminPasswordError('Failed to connect to the server.');
+    } finally {
+      setIsLoggingIn(false);
+    }
   };
 
   const handleAdminLogout = () => {
@@ -665,8 +690,8 @@ export function AdminOrderDashboard() {
               placeholder="Enter admin password"
             />
             {adminPasswordError && <p className="text-sm text-red-600">{adminPasswordError}</p>}
-            <button type="submit" className="w-full px-4 py-2 bg-green-600 text-yellow-100 rounded hover:bg-green-500">
-              Enter Dashboard
+            <button disabled={isLoggingIn} type="submit" className={`w-full px-4 py-2 ${isLoggingIn ? 'bg-gray-400' : 'bg-green-600 hover:bg-green-500'} text-yellow-100 rounded`}>
+              {isLoggingIn ? 'Verifying...' : 'Enter Dashboard'}
             </button>
           </form>
         </section>
