@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://ecommerce-api-6y9p.onrender.com';
 
 /**
  * Get authentication token from localStorage

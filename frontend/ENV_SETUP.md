@@ -4,7 +4,7 @@
 
 ### `.env`
 Contains development environment variables:
-- `VITE_API_BASE_URL` - Backend API URL (http://localhost:5000)
+- `VITE_API_BASE_URL` - Backend API URL (example: https://ecommerce-api-6y9p.onrender.com)
 - `VITE_APP_NAME` - Application name
 - `VITE_APP_VERSION` - Application version
 - `VITE_NODE_ENV` - Environment mode

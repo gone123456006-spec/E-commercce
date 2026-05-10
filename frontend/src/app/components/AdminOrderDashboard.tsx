@@ -631,8 +631,7 @@ export function AdminOrderDashboard() {
 
     setIsLoggingIn(true);
     try {
-      // NOTE: Update the base URL if needed based on your environment setup
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const apiUrl = import.meta.env.VITE_API_BASE_URL || 'https://ecommerce-api-6y9p.onrender.com';
       const response = await fetch(`${apiUrl}/api/auth/admin-login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

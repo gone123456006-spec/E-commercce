@@ -3,6 +3,8 @@ import { X, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://ecommerce-api-6y9p.onrender.com';
+
 interface LoginModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -37,7 +39,7 @@ export function LoginModal({ isOpen, onClose, onSuccess }: LoginModalProps) {
 
         setIsLoading(true);
         try {
-            const response = await fetch('/api/auth/send-otp', {
+            const response = await fetch(`${API_BASE_URL}/api/auth/send-otp`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ mobile })
