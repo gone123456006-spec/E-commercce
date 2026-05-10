@@ -112,28 +112,20 @@ Content-Type: application/json
 
 ```
 backend/
-├── config/
-│   ├── constants.js      # Application constants
-│   └── database.js       # MongoDB connection
-├── controllers/
-│   └── authController.js # Authentication logic
-├── middleware/
-│   ├── authMiddleware.js # JWT verification
-│   ├── errorHandler.js   # Error handling
-│   └── validator.js      # Input validation
-├── models/
-│   └── User.js          # User schema
-├── routes/
-│   └── authRoutes.js    # Auth endpoints
-├── utils/
-│   ├── otpService.js    # OTP generation
-│   └── tokenService.js  # JWT operations
+├── src/
+│   ├── config/          # Constants and DB connection
+│   ├── controllers/     # Request handlers
+│   ├── middleware/      # Auth/validation/error middleware
+│   ├── models/          # Mongoose schemas
+│   ├── routes/          # API route definitions
+│   ├── utils/           # OTP/JWT/helper utilities
+│   └── server.js        # Application entry point
+├── scripts/             # Utility scripts (seeding, one-off tasks)
 ├── .env                 # Environment variables
 ├── .env.example         # Environment template
-├── .gitignore          # Git ignore rules
-├── package.json        # Dependencies
-├── README.md           # Documentation
-└── server.js           # Application entry point
+├── .gitignore           # Git ignore rules
+├── package.json         # Dependencies + npm scripts
+└── README.md            # Documentation
 ```
 
 ## Environment Variables

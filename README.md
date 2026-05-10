@@ -1,5 +1,16 @@
-# E-commercce
-fully ecommerce
+# Ecommerce Monorepo
+
+This project has two apps:
+
+- `frontend/` - Vite React client
+- `backend/` - Node/Express API (source code inside `backend/src`)
+
+## Backend Quick Find
+
+- Backend entry file: `backend/src/server.js`
+- Backend routes: `backend/src/routes/`
+- Backend controllers: `backend/src/controllers/`
+- Render blueprint uses backend root: `render.yaml` with `rootDir: backend`
 
 ## Vercel Deployment
 
