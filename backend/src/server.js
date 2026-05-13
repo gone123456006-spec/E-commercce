@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import connectDB from './config/database.js';
+import { initFirebaseAdmin, isFirebaseAdminReady } from './config/firebaseAdmin.js';
 import authRoutes from './routes/authRoutes.js';
 import addressRoutes from './routes/addressRoutes.js';
 import productRoutes from './routes/productRoutes.js';
@@ -12,6 +13,13 @@ import { errorHandler, notFound } from './middleware/errorHandler.js';
 
 // ─── Load environment variables ───────────────────────────────────────────────
 dotenv.config();
+initFirebaseAdmin();
+
+if (process.env.NODE_ENV === 'production' && !isFirebaseAdminReady()) {
+    console.warn(
+        '⚠️  FIREBASE_SERVICE_ACCOUNT_JSON is not set — customer phone login (/api/auth/firebase-verify) will fail until you add it.'
+    );
+}
 
 // ─── Validate required environment variables at startup ───────────────────────
 const REQUIRED_ENV_VARS = ['MONGODB_URI', 'JWT_SECRET'];

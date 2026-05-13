@@ -23,15 +23,7 @@ export const ERROR_MESSAGES = {
 
 // Success Messages
 export const SUCCESS_MESSAGES = {
-    OTP_SENT: 'OTP sent successfully',
     LOGIN_SUCCESS: 'Login successful'
-};
-
-// OTP Configuration
-export const OTP_CONFIG = {
-    LENGTH: 4,
-    DUMMY_OTP: '1234',
-    EXPIRES_IN_MINUTES: parseInt(process.env.OTP_EXPIRES_IN) || 10
 };
 
 // JWT Configuration

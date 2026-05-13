@@ -1,22 +1,15 @@
 import express from 'express';
-import { sendOTPController, verifyOTPController, adminLoginController } from '../controllers/authController.js';
-import { validateSendOTP, validateVerifyOTP } from '../middleware/validator.js';
+import { firebaseVerifyController, adminLoginController } from '../controllers/authController.js';
+import { validateFirebaseVerify } from '../middleware/validator.js';
 
 const router = express.Router();
 
 /**
- * @route   POST /api/auth/send-otp
- * @desc    Send OTP to mobile number
+ * @route   POST /api/auth/firebase-verify
+ * @desc    Verify Firebase Phone Auth token and return app JWT
  * @access  Public
  */
-router.post('/send-otp', validateSendOTP, sendOTPController);
-
-/**
- * @route   POST /api/auth/verify-otp
- * @desc    Verify OTP and return JWT token
- * @access  Public
- */
-router.post('/verify-otp', validateVerifyOTP, verifyOTPController);
+router.post('/firebase-verify', validateFirebaseVerify, firebaseVerifyController);
 
 /**
  * @route   POST /api/auth/admin-login

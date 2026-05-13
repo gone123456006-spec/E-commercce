@@ -11,7 +11,8 @@ interface User {
 interface AuthContextType {
   isAuthenticated: boolean;
   user: User | null;
-  login: (mobile: string, otp: string) => Promise<void>;
+  /** Exchange Firebase ID token (after SMS verified) for app JWT */
+  loginWithFirebaseToken: (mobile: string, idToken: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -30,56 +31,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(false);
   }, []);
 
-  const login = async (mobile: string, otp: string) => {
+  const loginWithFirebaseToken = async (mobile: string, idToken: string) => {
+    const response = await fetch(`${API_BASE_URL}/api/auth/firebase-verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mobile, idToken }),
+    });
+
+    const text = await response.text();
+    let data: { message?: string; user?: User; token?: string } = {};
     try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/verify-otp`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mobile, otp })
-      });
-
-      const text = await response.text();
-      let data: { message?: string; user?: User; token?: string } = {};
-      try {
-        data = text ? JSON.parse(text) : {};
-      } catch {
-        // Backend returned non-JSON (empty or HTML error page)
-        if (!response.ok && otp === '1234') {
-          return doDemoLogin(mobile);
-        }
-        throw new Error('Server error. Start backend: cd backend && npm run dev');
-      }
-
-      if (!response.ok) {
-        if (otp === '1234') return doDemoLogin(mobile);
-        throw new Error(data.message || 'Login failed');
-      }
-
-      const userData = data.user;
-      const token = data.token;
-      if (!userData || !token) {
-        if (otp === '1234') return doDemoLogin(mobile);
-        throw new Error('Invalid response from server');
-      }
-
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(userData));
-      setUser(userData);
-      toast.success('Logged in successfully');
-    } catch (error: any) {
-      if (otp === '1234') return doDemoLogin(mobile);
-      console.error(error);
-      throw error;
+      data = text ? JSON.parse(text) : {};
+    } catch {
+      throw new Error('Server error while verifying Firebase login');
     }
-  };
 
-  const doDemoLogin = (mobile: string) => {
-    const demoUser = { id: 'demo', mobile };
-    const demoToken = 'demo-token-' + Date.now();
-    localStorage.setItem('token', demoToken);
-    localStorage.setItem('user', JSON.stringify(demoUser));
-    setUser(demoUser);
-    toast.success('Logged in (demo mode - backend not running)');
+    if (!response.ok) {
+      throw new Error(data.message || 'Login failed');
+    }
+
+    const userData = data.user;
+    const token = data.token;
+    if (!userData || !token) {
+      throw new Error('Invalid response from server');
+    }
+
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(userData));
+    setUser(userData);
+    toast.success('Logged in successfully');
   };
 
   const logout = () => {
@@ -90,11 +70,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   if (loading) {
-    return null; // Or a loading spinner
+    return null;
   }
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated: !!user, user, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated: !!user, user, loginWithFirebaseToken, logout }}>
       {children}
     </AuthContext.Provider>
   );

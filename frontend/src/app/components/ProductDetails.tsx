@@ -83,9 +83,9 @@ export function ProductDetails() {
 
   return (
     <div className="min-h-screen bg-yellow-50/40">
-      <div className="max-w-7xl mx-auto px-4 py-4 md:py-8">
+      <div className="mx-auto max-w-7xl px-0 py-2 sm:px-4 sm:py-4 md:py-8">
         {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-sm md:text-base text-gray-600 mb-4 md:mb-6 overflow-x-auto">
+        <div className="mb-2 flex items-center gap-1.5 overflow-x-auto px-3 text-xs text-gray-600 sm:mb-3 sm:gap-2 sm:px-0 sm:text-sm md:mb-5">
           <Link to="/" className="hover:text-green-600 whitespace-nowrap">Home</Link>
           <span>/</span>
           <Link to={`/category/${product.category}`} className="hover:text-green-600 capitalize whitespace-nowrap">
@@ -95,80 +95,88 @@ export function ProductDetails() {
           <span className="text-gray-900 truncate">{product.name}</span>
         </div>
 
-        {/* Product Details */}
-        <div className="bg-white rounded-xl md:rounded-2xl shadow-lg overflow-hidden">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8 p-4 md:p-8">
-            {/* Product Image */}
-            <div className="relative h-64 md:h-96 lg:h-full bg-gray-100 rounded-lg md:rounded-xl overflow-hidden">
-              <img
-                src={product.image}
-                alt={product.name}
-                className="w-full h-full object-cover"
-              />
+        {/* Product Details — full-bleed on small screens so content uses full width */}
+        <div className="overflow-hidden bg-white shadow-md sm:mx-0 sm:rounded-xl md:rounded-2xl md:shadow-lg">
+          <div className="grid grid-cols-1 items-start gap-4 px-3 py-4 sm:gap-6 sm:p-6 md:grid-cols-2 md:gap-8 md:p-7 lg:p-8">
+            {/* Product Image — fixed frame so tall photos show full product, not a tiny strip */}
+            <div className="w-full max-w-full sm:mx-auto sm:max-w-md md:mx-0 md:max-w-none">
+              <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-white sm:rounded-xl md:rounded-2xl">
+                <img
+                  src={product.image}
+                  alt={product.name}
+                  className="h-full w-full object-contain object-center"
+                />
+              </div>
             </div>
 
-            {/* Product Info */}
-            <div className="flex flex-col">
-              <h1 className="text-2xl md:text-3xl lg:text-4xl mb-3 md:mb-4">{product.name}</h1>
+            {/* Product Info — compact e-commerce style density */}
+            <div className="flex min-h-0 w-full flex-col gap-3 sm:gap-4 md:gap-5">
+              <div>
+                <h1 className="text-xl font-semibold leading-snug text-gray-900 sm:text-2xl md:text-3xl lg:text-4xl">
+                  {product.name}
+                </h1>
 
-              <div className="flex items-center gap-3 md:gap-4 mb-4 md:mb-6">
-                <div className="flex items-center gap-2 text-yellow-500">
-                  <Star className="w-5 h-5 md:w-6 md:h-6 fill-current" />
-                  <span className="text-lg md:text-2xl text-gray-700">{product.rating}</span>
+                <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-gray-700 sm:mt-2 sm:gap-x-3 sm:text-base">
+                  <div className="flex items-center gap-1 text-amber-500">
+                    <Star className="h-4 w-4 shrink-0 fill-current sm:h-5 sm:w-5" />
+                    <span className="font-medium">{product.rating}</span>
+                  </div>
+                  <span className="text-gray-300">·</span>
+                  <span className={`font-medium ${product.stock > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}
+                  </span>
                 </div>
-                <span className="text-gray-400">|</span>
-                <span className={`text-sm md:text-lg ${product.stock > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}
-                </span>
+
+                <p className="mt-2 text-2xl font-bold text-green-600 sm:mt-2.5 sm:text-3xl md:text-4xl">₹{product.price}</p>
               </div>
 
-              <div className="text-2xl md:text-3xl lg:text-4xl text-green-600 font-bold mb-4 md:mb-6">
-                ₹{product.price}
-              </div>
-
-              <div className="mb-4 md:mb-6">
-                <h3 className="text-lg md:text-xl mb-2">Description</h3>
-                <p className="text-sm md:text-base lg:text-lg text-gray-600 leading-relaxed">
+              <div className="rounded-lg border border-gray-100 bg-gray-50 p-3 sm:p-4">
+                <h2 className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Description</h2>
+                <p className="mt-1 text-sm leading-relaxed text-gray-800 sm:text-base">
                   {product.description}
                 </p>
               </div>
 
-              {/* Quantity Selector */}
-              <div className="mb-6 md:mb-8">
-                <h3 className="text-lg md:text-xl mb-3">Quantity</h3>
-                <div className="flex items-center gap-3 md:gap-4">
+              <div className="border-b border-gray-100 pb-3 sm:pb-4">
+                <h2 className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Quantity</h2>
+                <div className="mt-2 flex items-center gap-3">
                   <button
+                    type="button"
                     onClick={decrementQuantity}
                     disabled={quantity <= 1}
-                    className="w-10 h-10 md:w-12 md:h-12 rounded-full border-2 border-gray-300 flex items-center justify-center hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-gray-300 bg-white text-gray-700 transition-colors active:bg-gray-50 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 sm:h-11 sm:w-11"
                   >
-                    <Minus className="w-4 h-4 md:w-5 md:h-5" />
+                    <Minus className="h-4 w-4" />
                   </button>
-                  <span className="text-xl md:text-2xl w-10 md:w-12 text-center">{quantity}</span>
+                  <span className="min-w-[2rem] text-center text-lg font-semibold tabular-nums sm:text-xl">
+                    {quantity}
+                  </span>
                   <button
+                    type="button"
                     onClick={incrementQuantity}
                     disabled={quantity >= product.stock}
-                    className="w-10 h-10 md:w-12 md:h-12 rounded-full border-2 border-gray-300 flex items-center justify-center hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-gray-300 bg-white text-gray-700 transition-colors active:bg-gray-50 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 sm:h-11 sm:w-11"
                   >
-                    <Plus className="w-4 h-4 md:w-5 md:h-5" />
+                    <Plus className="h-4 w-4" />
                   </button>
                 </div>
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row gap-3 md:gap-4 mt-auto">
+              <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
                 <button
+                  type="button"
                   onClick={handleAddToCart}
                   disabled={product.stock === 0}
-                  className="flex-1 px-4 md:px-6 py-3 md:py-4 border-2 border-green-600 text-green-600 rounded-lg md:rounded-xl hover:bg-green-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-base md:text-lg flex items-center justify-center gap-2"
+                  className="flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-lg border border-green-600 bg-white px-4 py-2.5 text-sm font-semibold text-green-600 transition-colors hover:bg-green-50 active:bg-green-50 disabled:cursor-not-allowed disabled:opacity-50 sm:py-3 sm:text-base"
                 >
-                  <ShoppingCart className="w-4 h-4 md:w-5 md:h-5" />
+                  <ShoppingCart className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" />
                   Add to Cart
                 </button>
                 <button
+                  type="button"
                   onClick={handleBuyNow}
                   disabled={product.stock === 0}
-                  className="flex-1 px-4 md:px-6 py-3 md:py-4 bg-green-600 text-yellow-100 rounded-lg md:rounded-xl hover:bg-green-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-base md:text-lg"
+                  className="min-h-[44px] flex-1 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-semibold text-yellow-100 transition-colors hover:bg-green-700 active:bg-green-800 disabled:cursor-not-allowed disabled:opacity-50 sm:py-3 sm:text-base"
                 >
                   Buy Now
                 </button>
@@ -178,9 +186,9 @@ export function ProductDetails() {
         </div>
 
         {/* Related Products - Loads more on scroll */}
-        <div className="mt-8 md:mt-10">
-          <h2 className="text-xl md:text-2xl mb-4 md:mb-6">Related Products</h2>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
+        <div className="mt-4 px-3 sm:mt-6 sm:px-0 md:mt-8">
+          <h2 className="mb-2 text-base font-semibold text-gray-900 sm:mb-3 sm:text-lg md:mb-4">Related Products</h2>
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 md:gap-6 lg:grid-cols-4">
             {relatedProducts.slice(0, visibleRelatedCount).map((related) => (
               <div
                 key={related.id}

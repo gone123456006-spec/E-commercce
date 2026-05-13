@@ -96,21 +96,21 @@ export function CategoryPage() {
               className="bg-white rounded-xl shadow-md hover:shadow-lg active:shadow-md transition-all duration-300 overflow-hidden group flex flex-col border border-gray-100 min-w-0"
             >
               <Link to={`/product/${product.id}`} className="block flex-shrink-0 relative">
-                <div className="relative aspect-square sm:aspect-[4/3] overflow-hidden bg-gray-50">
+                <div className="relative aspect-square w-full overflow-hidden bg-white rounded-t-xl">
                   <img
                     src={product.image}
                     alt={product.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    className="h-full w-full object-contain object-center transition-transform duration-300 group-hover:scale-[1.02]"
                   />
                   {product.stock < 10 && (
-                    <span className="absolute top-1 left-1 px-1.5 py-0.5 text-[10px] font-medium bg-amber-500 text-white rounded">
+                    <span className="absolute top-1 left-1 z-10 px-1.5 py-0.5 text-[10px] font-medium bg-amber-500 text-white rounded">
                       Low stock
                     </span>
                   )}
                 </div>
               </Link>
 
-              <div className="p-2.5 sm:p-3 md:p-4 flex-1 flex flex-col min-h-0 min-w-0">
+              <div className="bg-gray-50 p-2.5 sm:p-3 md:p-4 flex-1 flex flex-col min-h-0 min-w-0 rounded-b-xl border-t border-gray-100/80">
                 <Link to={`/product/${product.id}`}>
                   <h3 className="text-xs sm:text-sm md:text-lg mb-1 sm:mb-2 hover:text-blue-600 transition-colors line-clamp-2 font-medium text-gray-900">
                     {product.name}

@@ -1,9 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { X, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
+import { isFirebaseAuthConfigured } from '../../lib/firebase';
+import {
+    sendFirebasePhoneOtp,
+    confirmFirebaseSmsCode,
+    resetFirebasePhoneAuth,
+} from '../../lib/firebasePhoneAuth';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://ecommerce-api-6y9p.onrender.com';
+/** Firebase SMS codes are 6 digits in normal flows. */
+const OTP_LENGTH = 6;
 
 interface LoginModalProps {
     isOpen: boolean;
@@ -12,23 +19,50 @@ interface LoginModalProps {
 }
 
 export function LoginModal({ isOpen, onClose, onSuccess }: LoginModalProps) {
+    const firebaseReady = useMemo(() => isFirebaseAuthConfigured(), []);
     const [step, setStep] = useState<'mobile' | 'otp'>('mobile');
     const [mobile, setMobile] = useState('');
     const [otp, setOtp] = useState('');
-    const [generatedOtp, setGeneratedOtp] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const { login } = useAuth();
+    const { loginWithFirebaseToken } = useAuth();
 
     useEffect(() => {
         if (isOpen) {
             setStep('mobile');
             setMobile('');
             setOtp('');
-            setGeneratedOtp('');
+        } else {
+            void resetFirebasePhoneAuth();
         }
     }, [isOpen]);
 
     if (!isOpen) return null;
+
+    if (!firebaseReady) {
+        return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 md:p-8 relative">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+                    >
+                        <X className="w-6 h-6" />
+                    </button>
+                    <h2 className="text-xl font-bold text-gray-900 pr-8">Login unavailable</h2>
+                    <p className="text-gray-600 mt-3 text-sm leading-relaxed">
+                        Phone login uses Firebase. Add all <code className="text-xs bg-gray-100 px-1 rounded">VITE_FIREBASE_*</code>{' '}
+                        variables to <code className="text-xs bg-gray-100 px-1 rounded">frontend/.env</code>, restart{' '}
+                        <code className="text-xs bg-gray-100 px-1 rounded">npm run dev</code>, and redeploy on Vercel.
+                    </p>
+                    <p className="text-gray-500 mt-2 text-xs">
+                        Backend must have <code className="bg-gray-100 px-1 rounded">FIREBASE_SERVICE_ACCOUNT_JSON</code> set for
+                        token exchange.
+                    </p>
+                </div>
+            </div>
+        );
+    }
 
     const handleSendOtp = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -39,59 +73,34 @@ export function LoginModal({ isOpen, onClose, onSuccess }: LoginModalProps) {
 
         setIsLoading(true);
         try {
-            const response = await fetch(`${API_BASE_URL}/api/auth/send-otp`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ mobile })
-            });
-
-            const text = await response.text();
-            let data: { message?: string } = {};
-            try {
-                data = text ? JSON.parse(text) : {};
-            } catch {
-                // Backend down or returned non-JSON - still show OTP step with dummy
-                toast.info('Use dummy OTP: 1234');
-                setIsLoading(false);
-                setStep('otp');
-                return;
-            }
-
-            if (!response.ok) {
-                throw new Error(data.message || 'Failed to send OTP');
-            }
-
-            toast.info('OTP Sent! Use dummy OTP: 1234');
-            setIsLoading(false);
+            await sendFirebasePhoneOtp(`+91${mobile}`, 'firebase-recaptcha');
+            toast.success('OTP sent to your phone');
             setStep('otp');
-        } catch (error: any) {
-            // On network error, still allow OTP step
-            if (/failed to fetch|network/i.test(error.message || '')) {
-                toast.info('Backend offline. Use dummy OTP: 1234');
-                setStep('otp');
-                setOtp('1234');
-            } else {
-                toast.error(error.message);
-            }
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : 'Failed to send OTP';
+            toast.error(message);
+        } finally {
             setIsLoading(false);
         }
     };
 
     const handleVerifyOtp = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (otp.length !== 4) {
-            toast.error('Please enter 4-digit OTP');
+        if (otp.length !== OTP_LENGTH) {
+            toast.error(`Enter the ${OTP_LENGTH}-digit code from your SMS`);
             return;
         }
 
         setIsLoading(true);
         try {
-            await login(mobile, otp);
-            setIsLoading(false);
+            const idToken = await confirmFirebaseSmsCode(otp);
+            await loginWithFirebaseToken(mobile, idToken);
             onSuccess();
             onClose();
-        } catch (error: any) {
-            toast.error(error.message);
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : 'Verification failed';
+            toast.error(message);
+        } finally {
             setIsLoading(false);
         }
     };
@@ -100,6 +109,7 @@ export function LoginModal({ isOpen, onClose, onSuccess }: LoginModalProps) {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
             <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden relative animate-in fade-in zoom-in duration-200">
                 <button
+                    type="button"
                     onClick={onClose}
                     className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
                 >
@@ -107,6 +117,8 @@ export function LoginModal({ isOpen, onClose, onSuccess }: LoginModalProps) {
                 </button>
 
                 <div className="p-6 md:p-8">
+                    <div id="firebase-recaptcha" className="sr-only" aria-hidden="true" />
+
                     <div className="text-center mb-8">
                         <h2 className="text-2xl font-bold text-gray-900">
                             {step === 'mobile' ? 'Login' : 'Verify OTP'}
@@ -114,9 +126,9 @@ export function LoginModal({ isOpen, onClose, onSuccess }: LoginModalProps) {
                         <p className="text-gray-600 mt-2">
                             {step === 'mobile'
                                 ? 'Enter your mobile number to continue'
-                                : `Enter the OTP sent to ${mobile}`
-                            }
+                                : `Enter the code sent to +91 ${mobile}`}
                         </p>
+                        <p className="text-xs text-gray-500 mt-2">Secured with Firebase Phone Authentication</p>
                     </div>
 
                     {step === 'mobile' ? (
@@ -149,77 +161,48 @@ export function LoginModal({ isOpen, onClose, onSuccess }: LoginModalProps) {
                                 disabled={mobile.length !== 10 || isLoading}
                                 className="w-full py-3 px-4 bg-green-600 hover:bg-green-500 text-yellow-100 font-medium rounded-lg transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                {isLoading ? (
-                                    <Loader2 className="w-5 h-5 animate-spin" />
-                                ) : (
-                                    'Get OTP'
-                                )}
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    if (mobile.length === 10) {
-                                        setStep('otp');
-                                        setOtp('1234');
-                                        toast.info('Use OTP: 1234');
-                                    } else {
-                                        toast.error('Enter 10-digit mobile first');
-                                    }
-                                }}
-                                className="w-full py-2 text-sm text-amber-700 hover:text-amber-800 font-medium border border-amber-300 rounded-lg hover:bg-amber-50"
-                            >
-                                Use demo OTP (1234) — skip Get OTP
+                                {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Get OTP'}
                             </button>
                         </form>
                     ) : (
                         <form onSubmit={handleVerifyOtp} className="space-y-4">
-                            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                                <p className="text-sm font-semibold text-amber-800">DUMMY OTP - USE NOW</p>
-                                <p className="text-2xl font-bold text-amber-700 mt-1">1234</p>
-                            </div>
                             <div>
                                 <label htmlFor="otp" className="block text-sm font-medium text-gray-700 mb-1">
-                                    One Time Password
+                                    SMS code
                                 </label>
                                 <input
                                     type="text"
+                                    inputMode="numeric"
                                     id="otp"
                                     value={otp}
                                     onChange={(e) => {
-                                        const val = e.target.value.replace(/\D/g, '').slice(0, 4);
+                                        const val = e.target.value.replace(/\D/g, '').slice(0, OTP_LENGTH);
                                         setOtp(val);
                                     }}
                                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all outline-none text-center text-lg tracking-widest"
-                                    placeholder="Enter 1234"
+                                    placeholder="6-digit code"
                                     autoFocus
+                                    autoComplete="one-time-code"
                                 />
-                                <button
-                                    type="button"
-                                    onClick={() => setOtp('1234')}
-                                    className="mt-2 text-sm text-green-600 hover:text-green-700 font-medium"
-                                >
-                                    Use dummy OTP 1234
-                                </button>
                             </div>
 
                             <button
                                 type="submit"
-                                disabled={otp.length !== 4 || isLoading}
+                                disabled={otp.length !== OTP_LENGTH || isLoading}
                                 className="w-full py-3 px-4 bg-green-600 hover:bg-green-500 text-yellow-100 font-medium rounded-lg transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                {isLoading ? (
-                                    <Loader2 className="w-5 h-5 animate-spin" />
-                                ) : (
-                                    'Verify & Proceed'
-                                )}
+                                {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Verify & Proceed'}
                             </button>
 
                             <button
                                 type="button"
-                                onClick={() => setStep('mobile')}
+                                onClick={() => {
+                                    setStep('mobile');
+                                    void resetFirebasePhoneAuth();
+                                }}
                                 className="w-full text-sm text-green-600 hover:text-green-700 hover:underline"
                             >
-                                Change Mobile Number
+                                Change mobile number
                             </button>
                         </form>
                     )}
