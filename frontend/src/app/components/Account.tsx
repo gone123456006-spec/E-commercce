@@ -62,7 +62,7 @@ export function Account() {
   };
 
   return (
-    <div className="min-h-screen bg-yellow-50/40">
+    <div className="min-h-screen max-w-full overflow-x-hidden bg-tawang-cream">
       <div className="max-w-7xl mx-auto px-4 py-4 md:py-8">
         <h1 className="text-2xl md:text-4xl mb-4 md:mb-8">My Account</h1>
 
@@ -71,11 +71,11 @@ export function Account() {
           <div className="lg:col-span-2 space-y-4 md:space-y-6">
             <div className="bg-white rounded-lg md:rounded-xl shadow-md p-4 md:p-6">
               <div className="flex items-center justify-between mb-4 md:mb-6">
-                <h2 className="text-xl md:text-2xl">Profile Information</h2>
+                <h2 className="font-heading text-xl md:text-2xl">Profile Information</h2>
                 {!isEditing && hasProfile() && (
                   <button
                     onClick={() => setIsEditing(true)}
-                    className="px-3 md:px-4 py-1.5 md:py-2 text-sm md:text-base text-green-600 border border-green-600 rounded-lg hover:bg-green-50 transition-colors"
+                    className="px-3 md:px-4 py-1.5 md:py-2 text-sm md:text-base text-tawang-gold border border-tawang-gold rounded-lg hover:bg-tawang-beige transition-colors"
                   >
                     Edit
                   </button>
@@ -92,7 +92,7 @@ export function Account() {
                         type="text"
                         value={profile.name}
                         onChange={(e) => setProfile({ ...profile, name: e.target.value })}
-                        className="w-full pl-10 md:pl-12 pr-4 py-2.5 md:py-3 text-sm md:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                        className="w-full pl-10 md:pl-12 pr-4 py-2.5 md:py-3 text-sm md:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-tawang-gold"
                         placeholder="Enter your name"
                       />
                     </div>
@@ -106,7 +106,7 @@ export function Account() {
                         type="email"
                         value={profile.email}
                         onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-                        className="w-full pl-10 md:pl-12 pr-4 py-2.5 md:py-3 text-sm md:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                        className="w-full pl-10 md:pl-12 pr-4 py-2.5 md:py-3 text-sm md:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-tawang-gold"
                         placeholder="Enter your email"
                       />
                     </div>
@@ -120,7 +120,7 @@ export function Account() {
                         type="tel"
                         value={profile.phone}
                         onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
-                        className="w-full pl-10 md:pl-12 pr-4 py-2.5 md:py-3 text-sm md:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                        className="w-full pl-10 md:pl-12 pr-4 py-2.5 md:py-3 text-sm md:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-tawang-gold"
                         placeholder="Enter your phone number"
                       />
                     </div>
@@ -129,7 +129,7 @@ export function Account() {
                   <div className="flex flex-col sm:flex-row gap-3 md:gap-4">
                     <button
                       onClick={handleSaveProfile}
-                      className="flex-1 px-4 md:px-6 py-2.5 md:py-3 text-sm md:text-base bg-green-600 text-yellow-100 rounded-lg hover:bg-green-500 transition-colors"
+                      className="flex-1 px-4 md:px-6 py-2.5 md:py-3 text-sm md:text-base bg-tawang-gold text-white/90 rounded-lg hover:bg-tawang-gold transition-colors"
                     >
                       Save Profile
                     </button>
@@ -139,7 +139,7 @@ export function Account() {
                           loadProfile();
                           setIsEditing(false);
                         }}
-                        className="flex-1 px-4 md:px-6 py-2.5 md:py-3 text-sm md:text-base border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                        className="flex-1 px-4 md:px-6 py-2.5 md:py-3 text-sm md:text-base border border-gray-300 text-gray-700 rounded-lg hover:bg-tawang-beige transition-colors"
                       >
                         Cancel
                       </button>
@@ -148,7 +148,7 @@ export function Account() {
                 </div>
               ) : (
                 <div className="space-y-3 md:space-y-4">
-                  <div className="flex items-center gap-3 p-3 md:p-4 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-3 p-3 md:p-4 bg-tawang-beige rounded-lg">
                     <User className="w-5 h-5 md:w-6 md:h-6 text-gray-400 flex-shrink-0" />
                     <div className="min-w-0">
                       <p className="text-xs md:text-sm text-gray-600">Name</p>
@@ -156,7 +156,7 @@ export function Account() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 p-3 md:p-4 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-3 p-3 md:p-4 bg-tawang-beige rounded-lg">
                     <Mail className="w-5 h-5 md:w-6 md:h-6 text-gray-400 flex-shrink-0" />
                     <div className="min-w-0">
                       <p className="text-xs md:text-sm text-gray-600">Email</p>
@@ -164,7 +164,7 @@ export function Account() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 p-3 md:p-4 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-3 p-3 md:p-4 bg-tawang-beige rounded-lg">
                     <Phone className="w-5 h-5 md:w-6 md:h-6 text-gray-400 flex-shrink-0" />
                     <div className="min-w-0">
                       <p className="text-xs md:text-sm text-gray-600">Phone</p>
@@ -177,7 +177,7 @@ export function Account() {
 
             {/* Saved Addresses */}
             <div className="bg-white rounded-lg md:rounded-xl shadow-md p-4 md:p-6">
-              <h2 className="text-xl md:text-2xl mb-4 md:mb-6">Saved Addresses</h2>
+              <h2 className="font-heading text-xl md:text-2xl mb-4 md:mb-6">Saved Addresses</h2>
 
               {addresses.length === 0 ? (
                 <div className="text-center py-6 md:py-8">
@@ -217,11 +217,11 @@ export function Account() {
           {/* Sidebar */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-lg md:rounded-xl shadow-md p-4 md:p-6 space-y-3 md:space-y-4">
-              <h2 className="text-xl md:text-2xl mb-3 md:mb-4">Account Actions</h2>
+              <h2 className="font-heading text-xl md:text-2xl mb-3 md:mb-4">Account Actions</h2>
 
               <button
                 onClick={() => navigate('/orders')}
-                className="w-full px-4 md:px-6 py-2.5 md:py-3 text-sm md:text-base border-2 border-green-600 text-green-600 rounded-lg hover:bg-green-50 transition-colors text-left flex items-center gap-2 md:gap-3"
+                className="w-full px-4 md:px-6 py-2.5 md:py-3 text-sm md:text-base border-2 border-tawang-gold text-tawang-gold rounded-lg hover:bg-tawang-beige transition-colors text-left flex items-center gap-2 md:gap-3"
               >
                 <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
@@ -238,7 +238,7 @@ export function Account() {
               </button>
 
               <div className="mt-6 md:mt-8 pt-4 md:pt-6 border-t">
-                <h3 className="text-base md:text-lg mb-3 md:mb-4">Help & Support</h3>
+                <h3 className="font-heading text-base md:text-lg mb-3 md:mb-4">Help & Support</h3>
                 <div className="space-y-2 text-xs md:text-sm text-gray-600">
                   <p>📧 support@shopzone.com</p>
                   <p>📞 1800-123-4567</p>

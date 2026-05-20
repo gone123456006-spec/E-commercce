@@ -36,3 +36,6 @@ export const JWT_CONFIG = {
 export const ADMIN_CONFIG = {
     PASSWORD: process.env.ADMIN_PASSWORD || 'Ar@v1234'
 };
+
+// New dashboard products appear on the public site after this delay (ms)
+export const PRODUCT_VISIBILITY_DELAY_MS = 5000;

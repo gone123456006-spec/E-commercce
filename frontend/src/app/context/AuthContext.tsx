@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { toast } from 'sonner';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://ecommerce-api-6y9p.onrender.com';
+import { apiUrl } from '../lib/api';
 
 interface User {
   id: string;
@@ -32,7 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const loginWithFirebaseToken = async (mobile: string, idToken: string) => {
-    const response = await fetch(`${API_BASE_URL}/api/auth/firebase-verify`, {
+    const response = await fetch(apiUrl('/api/auth/firebase-verify'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ mobile, idToken }),

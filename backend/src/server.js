@@ -9,6 +9,7 @@ import authRoutes from './routes/authRoutes.js';
 import addressRoutes from './routes/addressRoutes.js';
 import productRoutes from './routes/productRoutes.js';
 import orderRoutes from './routes/orderRoutes.js';
+import siteRoutes from './routes/siteRoutes.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 
 // ─── Load environment variables ───────────────────────────────────────────────
@@ -95,6 +96,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/address', addressRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/site', siteRoutes);
 
 // ─── Error handling (must come after routes) ──────────────────────────────────
 app.use(notFound);

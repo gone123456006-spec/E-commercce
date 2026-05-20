@@ -49,14 +49,14 @@ export function LoginModal({ isOpen, onClose, onSuccess }: LoginModalProps) {
                     >
                         <X className="w-6 h-6" />
                     </button>
-                    <h2 className="text-xl font-bold text-gray-900 pr-8">Login unavailable</h2>
+                    <h2 className="font-heading text-xl font-bold text-gray-900 pr-8">Login unavailable</h2>
                     <p className="text-gray-600 mt-3 text-sm leading-relaxed">
-                        Phone login uses Firebase. Add all <code className="text-xs bg-gray-100 px-1 rounded">VITE_FIREBASE_*</code>{' '}
-                        variables to <code className="text-xs bg-gray-100 px-1 rounded">frontend/.env</code>, restart{' '}
-                        <code className="text-xs bg-gray-100 px-1 rounded">npm run dev</code>, and redeploy on Vercel.
+                        Phone login uses Firebase. Add all <code className="text-xs bg-tawang-beige px-1 rounded">VITE_FIREBASE_*</code>{' '}
+                        variables to <code className="text-xs bg-tawang-beige px-1 rounded">frontend/.env</code>, restart{' '}
+                        <code className="text-xs bg-tawang-beige px-1 rounded">npm run dev</code>, and redeploy on Vercel.
                     </p>
                     <p className="text-gray-500 mt-2 text-xs">
-                        Backend must have <code className="bg-gray-100 px-1 rounded">FIREBASE_SERVICE_ACCOUNT_JSON</code> set for
+                        Backend must have <code className="bg-tawang-beige px-1 rounded">FIREBASE_SERVICE_ACCOUNT_JSON</code> set for
                         token exchange.
                     </p>
                 </div>
@@ -120,7 +120,7 @@ export function LoginModal({ isOpen, onClose, onSuccess }: LoginModalProps) {
                     <div id="firebase-recaptcha" className="sr-only" aria-hidden="true" />
 
                     <div className="text-center mb-8">
-                        <h2 className="text-2xl font-bold text-gray-900">
+                        <h2 className="font-heading text-2xl font-bold text-gray-900">
                             {step === 'mobile' ? 'Login' : 'Verify OTP'}
                         </h2>
                         <p className="text-gray-600 mt-2">
@@ -149,7 +149,7 @@ export function LoginModal({ isOpen, onClose, onSuccess }: LoginModalProps) {
                                             const val = e.target.value.replace(/\D/g, '').slice(0, 10);
                                             setMobile(val);
                                         }}
-                                        className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all outline-none"
+                                        className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tawang-gold focus:border-tawang-gold transition-all outline-none"
                                         placeholder="Enter 10 digit number"
                                         autoFocus
                                     />
@@ -159,7 +159,7 @@ export function LoginModal({ isOpen, onClose, onSuccess }: LoginModalProps) {
                             <button
                                 type="submit"
                                 disabled={mobile.length !== 10 || isLoading}
-                                className="w-full py-3 px-4 bg-green-600 hover:bg-green-500 text-yellow-100 font-medium rounded-lg transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="w-full py-3 px-4 bg-tawang-gold hover:bg-tawang-gold text-white/90 font-medium rounded-lg transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Get OTP'}
                             </button>
@@ -179,7 +179,7 @@ export function LoginModal({ isOpen, onClose, onSuccess }: LoginModalProps) {
                                         const val = e.target.value.replace(/\D/g, '').slice(0, OTP_LENGTH);
                                         setOtp(val);
                                     }}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all outline-none text-center text-lg tracking-widest"
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tawang-gold focus:border-tawang-gold transition-all outline-none text-center text-lg tracking-widest"
                                     placeholder="6-digit code"
                                     autoFocus
                                     autoComplete="one-time-code"
@@ -189,7 +189,7 @@ export function LoginModal({ isOpen, onClose, onSuccess }: LoginModalProps) {
                             <button
                                 type="submit"
                                 disabled={otp.length !== OTP_LENGTH || isLoading}
-                                className="w-full py-3 px-4 bg-green-600 hover:bg-green-500 text-yellow-100 font-medium rounded-lg transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="w-full py-3 px-4 bg-tawang-gold hover:bg-tawang-gold text-white/90 font-medium rounded-lg transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Verify & Proceed'}
                             </button>
@@ -200,7 +200,7 @@ export function LoginModal({ isOpen, onClose, onSuccess }: LoginModalProps) {
                                     setStep('mobile');
                                     void resetFirebasePhoneAuth();
                                 }}
-                                className="w-full text-sm text-green-600 hover:text-green-700 hover:underline"
+                                className="w-full text-sm text-tawang-gold hover:text-tawang-gold hover:underline"
                             >
                                 Change mobile number
                             </button>

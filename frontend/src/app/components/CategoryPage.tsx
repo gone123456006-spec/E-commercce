@@ -1,43 +1,29 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Star, ShoppingCart } from 'lucide-react';
 import { getProducts } from '../data/products';
 import { addToCart } from '../utils/storage';
+import { preloadImageUrls } from '../utils/imagePreload';
 import { toast } from 'sonner';
-
-const categoryNames: Record<string, string> = {
-  clothes: 'Clothes',
-  jewellery: 'Jewellery',
-  food: 'Food',
-  'chips-namkeen': 'Chips & Namkeen',
-  'sweets-chocolates': 'Sweets & Chocolates',
-  'drinks-juices': 'Drinks & Juices',
-  'tea-coffee': 'Tea, Coffee & Milk Drinks',
-  'instant-food': 'Instant Food',
-  'sauces-spreads': 'Sauces & Spreads',
-  'paan-corner': 'Paan Corner',
-  'ice-creams': 'Ice Creams & More',
-  'energy-drinks': 'Energy & Sports Drinks',
-  'biscuits-cookies': 'Biscuits & Cookies',
-  'dry-snacks': 'Dry Snacks & Toast',
-  'ready-to-eat': 'Ready to Eat'
-};
+import { CategoryPageHeader } from './CategoryPageHeader';
+import { ProductImage } from './ProductImage';
 
 export function CategoryPage() {
   const { category } = useParams<{ category: string }>();
-  const [, setProductVersion] = useState(0);
-  const categoryProducts = getProducts()
-    .filter((p) => p.category === category)
-    .sort((a, b) => {
-      const aCustom = a.id.startsWith('custom_') ? 1 : 0;
-      const bCustom = b.id.startsWith('custom_') ? 1 : 0;
-      if (aCustom !== bCustom) return bCustom - aCustom;
-      return b.rating - a.rating || a.price - b.price;
-    });
+  const [productVersion, setProductVersion] = useState(0);
+  const categoryProducts = useMemo(
+    () =>
+      getProducts()
+        .filter((p) => p.category === category)
+        .sort((a, b) => {
+          const aCustom = a.id.startsWith('custom_') ? 1 : 0;
+          const bCustom = b.id.startsWith('custom_') ? 1 : 0;
+          if (aCustom !== bCustom) return bCustom - aCustom;
+          return b.rating - a.rating || a.price - b.price;
+        }),
+    [category, productVersion]
+  );
   const [visibleCount, setVisibleCount] = useState(20);
-
-  const displayCategoryName = categoryNames[category as string] ||
-    (category ? category.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') : 'Category');
 
   const handleAddToCart = (productId: string, productName: string) => {
     addToCart(productId, 1);
@@ -47,6 +33,7 @@ export function CategoryPage() {
 
   useEffect(() => {
     setVisibleCount(20);
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   }, [category]);
 
   useEffect(() => {
@@ -54,6 +41,10 @@ export function CategoryPage() {
     window.addEventListener('productsUpdated', onProductsUpdated);
     return () => window.removeEventListener('productsUpdated', onProductsUpdated);
   }, []);
+
+  useEffect(() => {
+    preloadImageUrls(categoryProducts.slice(0, 24).map((p) => p.image).filter(Boolean));
+  }, [category, categoryProducts]);
 
   useEffect(() => {
     const onScroll = () => {
@@ -69,50 +60,34 @@ export function CategoryPage() {
   }, [categoryProducts.length, visibleCount]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 md:py-8">
-        {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-sm md:text-base text-gray-600 mb-4 md:mb-6">
-          <Link to="/" className="hover:text-blue-600">Home</Link>
-          <span>/</span>
-          <span className="text-gray-900">{displayCategoryName}</span>
-        </div>
+    <div className="min-h-screen max-w-full overflow-x-hidden bg-tawang-cream">
+      {category && <CategoryPageHeader category={category} />}
 
-        {/* Page Header */}
-        <div className="mb-4 sm:mb-6 md:mb-8">
-          <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl mb-1 sm:mb-2">
-            {displayCategoryName}
-          </h1>
-          <p className="text-sm sm:text-base md:text-lg lg:text-xl text-gray-600">
-            {categoryProducts.length} products available
-          </p>
-        </div>
-
-        {/* Product Grid - 3 cards per row on mobile, responsive */}
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
+      <div className="mx-auto max-w-7xl px-3 pt-1 pb-4 sm:px-4 md:pt-2 md:pb-8">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 md:gap-6">
           {categoryProducts.slice(0, visibleCount).map((product) => (
             <div
               key={product.id}
               className="bg-white rounded-xl shadow-md hover:shadow-lg active:shadow-md transition-all duration-300 overflow-hidden group flex flex-col border border-gray-100 min-w-0"
             >
               <Link to={`/product/${product.id}`} className="block flex-shrink-0 relative">
-                <div className="relative aspect-square w-full overflow-hidden bg-white rounded-t-xl">
-                  <img
-                    src={product.image}
-                    alt={product.name}
-                    className="h-full w-full object-contain object-center transition-transform duration-300 group-hover:scale-[1.02]"
-                  />
-                  {product.stock < 10 && (
-                    <span className="absolute top-1 left-1 z-10 px-1.5 py-0.5 text-[10px] font-medium bg-amber-500 text-white rounded">
-                      Low stock
-                    </span>
-                  )}
-                </div>
+                <ProductImage
+                  size="category"
+                  src={product.image}
+                  alt={product.name}
+                  containerClassName="rounded-t-xl bg-tawang-beige"
+                  className="transition-transform duration-300 group-hover:scale-[1.02]"
+                />
+                {product.stock < 10 && (
+                  <span className="absolute top-1 left-1 z-10 px-1.5 py-0.5 text-[10px] font-medium bg-amber-500 text-white rounded">
+                    Low stock
+                  </span>
+                )}
               </Link>
 
-              <div className="bg-gray-50 p-2.5 sm:p-3 md:p-4 flex-1 flex flex-col min-h-0 min-w-0 rounded-b-xl border-t border-gray-100/80">
+              <div className="bg-tawang-beige p-2.5 sm:p-3 md:p-4 flex-1 flex flex-col min-h-0 min-w-0 rounded-b-xl border-t border-gray-100/80">
                 <Link to={`/product/${product.id}`}>
-                  <h3 className="text-xs sm:text-sm md:text-lg mb-1 sm:mb-2 hover:text-blue-600 transition-colors line-clamp-2 font-medium text-gray-900">
+                  <h3 className="font-heading text-xs sm:text-sm md:text-lg mb-1 sm:mb-2 hover:text-tawang-gold transition-colors line-clamp-2 font-medium text-gray-900">
                     {product.name}
                   </h3>
                 </Link>
@@ -127,19 +102,20 @@ export function CategoryPage() {
                 </div>
 
                 <div className="mt-auto pt-1 flex items-center justify-between gap-1 sm:gap-2 min-w-0">
-                  <span className="text-sm sm:text-base md:text-xl text-blue-600 font-bold truncate min-w-0">
+                  <span className="text-sm sm:text-base md:text-xl text-tawang-gold font-bold truncate min-w-0">
                     ₹{product.price}
                   </span>
                   <div className="flex gap-1 sm:gap-1.5 shrink-0">
                     <Link
                       to={`/product/${product.id}`}
-                      className="min-h-[32px] sm:min-h-[36px] flex items-center justify-center px-2 sm:px-3 py-1.5 sm:py-2 text-[10px] sm:text-sm font-medium border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 active:bg-blue-100 transition-colors whitespace-nowrap"
+                      className="min-h-[32px] sm:min-h-[36px] flex items-center justify-center px-2 sm:px-3 py-1.5 sm:py-2 text-[10px] sm:text-sm font-medium border border-tawang-gold text-tawang-gold rounded-lg hover:bg-tawang-beige active:bg-tawang-beige transition-colors whitespace-nowrap"
                     >
                       Details
                     </Link>
                     <button
+                      type="button"
                       onClick={() => handleAddToCart(product.id, product.name)}
-                      className="min-h-[32px] sm:min-h-[36px] w-8 h-8 sm:w-9 sm:h-9 flex-shrink-0 flex items-center justify-center bg-blue-600 text-white rounded-lg hover:bg-blue-700 active:scale-95 transition-all"
+                      className="min-h-[32px] sm:min-h-[36px] w-8 h-8 sm:w-9 sm:h-9 flex-shrink-0 flex items-center justify-center bg-tawang-navy text-white rounded-lg hover:bg-tawang-navy/90 active:scale-95 transition-all"
                     >
                       <ShoppingCart className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </button>

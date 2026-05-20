@@ -1,1 +1,7 @@
 node_modules
+
+# Accidental large uploads (GitHub 100MB limit)
+frontend/public/assets/images/Downloads/
+*.apk
+*.aab
+.env

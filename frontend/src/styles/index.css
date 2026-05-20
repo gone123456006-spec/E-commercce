@@ -2,19 +2,227 @@
 @import './tailwind.css';
 @import './theme.css';
 
-/* Order placed - It's Done animation */
+/* ─── Himalayan / Tawang theme utilities ─── */
+
+.font-heading {
+  font-family: var(--font-heading);
+}
+
+.font-body {
+  font-family: var(--font-body);
+}
+
+/* Hide scrollbar on horizontal product rows (scroll still works inside the row) */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Contain horizontal scroll inside sections — page must not move left/right */
+.scroll-row-x {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Keep top navbar fixed while scrolling (especially iOS Safari) */
+.site-header-sticky {
+  position: fixed;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.tawang-gradient-navy {
+  background: linear-gradient(135deg, #0b2a4a 0%, #123d6b 50%, #0b2a4a 100%);
+}
+
+.tawang-gradient-gold {
+  background: linear-gradient(135deg, #c4881f 0%, #d89b2b 45%, #e8b04a 100%);
+}
+
+.tawang-gradient-hero {
+  background: linear-gradient(160deg, #0b2a4a 0%, #15406e 40%, #1a4d7a 70%, rgba(216, 155, 43, 0.15) 100%);
+}
+
+/* Subtle Tibetan-inspired border ornament */
+.tawang-ornament {
+  position: relative;
+}
+
+.tawang-ornament::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent 0,
+    transparent 6px,
+    rgba(216, 155, 43, 0.5) 6px,
+    rgba(216, 155, 43, 0.5) 8px,
+    transparent 8px,
+    transparent 14px,
+    rgba(216, 155, 43, 0.85) 14px,
+    rgba(216, 155, 43, 0.85) 16px
+  );
+  pointer-events: none;
+}
+
+/* Footer — solid navy + gold top border (homepage) */
+.site-footer {
+  background-color: var(--tawang-navy);
+  border-top: 1px solid var(--tawang-gold);
+  margin-bottom: 0;
+}
+
+.site-footer-body {
+  background-color: var(--tawang-navy);
+}
+
+.site-footer-legal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding-bottom: 0.25rem;
+  margin-bottom: 0;
+  background-color: var(--tawang-navy);
+}
+
+.site-footer-scene {
+  position: relative;
+  width: 100%;
+  line-height: 0;
+  margin-top: -0.5rem;
+  background-color: var(--tawang-navy);
+}
+
+.site-footer-scene img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: clamp(100px, 18vw, 180px);
+  opacity: 1;
+  object-fit: cover;
+  object-position: center bottom;
+  vertical-align: bottom;
+}
+
+/* Fade from top down — blends image into navy footer above */
+.site-footer-scene-fade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    var(--tawang-navy) 0%,
+    rgba(11, 42, 74, 0.7) 18%,
+    transparent 42%
+  );
+}
+
+.tawang-divider {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(216, 155, 43, 0.5) 20%,
+    rgba(216, 155, 43, 0.9) 50%,
+    rgba(216, 155, 43, 0.5) 80%,
+    transparent
+  );
+}
+
+.tawang-card {
+  @apply rounded-xl border border-tawang-navy/10 bg-white shadow-sm transition-shadow duration-300;
+}
+
+.tawang-card:hover {
+  box-shadow: 0 8px 28px rgba(11, 42, 74, 0.1), 0 0 0 1px rgba(216, 155, 43, 0.12);
+}
+
+.tawang-section {
+  @apply rounded-2xl border border-tawang-navy/8 bg-tawang-beige/80 p-4 sm:p-5;
+}
+
+.tawang-btn-primary {
+  @apply inline-flex items-center justify-center rounded-xl bg-tawang-gold px-4 py-2.5 font-semibold text-tawang-navy shadow-md transition-all duration-300;
+  box-shadow: 0 4px 14px rgba(216, 155, 43, 0.35);
+}
+
+.tawang-btn-primary:hover:not(:disabled) {
+  @apply brightness-110;
+  box-shadow: 0 6px 22px rgba(216, 155, 43, 0.5);
+}
+
+.tawang-btn-primary:active:not(:disabled) {
+  @apply scale-[0.98] brightness-95;
+}
+
+.tawang-btn-outline {
+  @apply inline-flex items-center justify-center rounded-xl border-2 border-tawang-gold bg-white px-4 py-2.5 font-semibold text-tawang-navy transition-all duration-300;
+}
+
+.tawang-btn-outline:hover:not(:disabled) {
+  @apply bg-tawang-beige;
+  box-shadow: 0 0 16px rgba(216, 155, 43, 0.25);
+}
+
+.tawang-input {
+  @apply w-full rounded-xl border border-tawang-navy/15 bg-white px-4 py-2.5 text-tawang-charcoal placeholder:text-muted-foreground focus:border-tawang-gold focus:outline-none focus:ring-2 focus:ring-tawang-gold/30;
+}
+
+.tawang-nav-link-active {
+  @apply bg-tawang-gold/20 text-tawang-gold;
+}
+
+.tawang-nav-link {
+  @apply text-white/85 transition-all duration-200 hover:bg-white/10 hover:text-tawang-gold;
+}
+
+.shadow-tawang-glow {
+  box-shadow: 0 4px 20px rgba(216, 155, 43, 0.35);
+}
+
+.hover\:shadow-tawang-glow:hover {
+  box-shadow: 0 8px 28px rgba(216, 155, 43, 0.45);
+}
+
+/* Order placed animation */
 @keyframes orderDonePop {
-  0% { transform: scale(0); opacity: 0; }
-  50% { transform: scale(1.15); }
-  100% { transform: scale(1); opacity: 1; }
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.15);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 .order-done-check svg {
   animation: orderDonePop 0.6s ease-out forwards;
 }
 
-/* New order highlight in admin - pulse once then fade */
 @keyframes newOrderHighlight {
-  0%, 100% { background-color: transparent; }
-  50% { background-color: rgb(220 252 231 / 0.6); }
+  0%,
+  100% {
+    background-color: transparent;
+  }
+  50% {
+    background-color: rgba(216, 155, 43, 0.15);
+  }
 }

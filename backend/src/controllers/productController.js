@@ -1,9 +1,21 @@
 import Product from '../models/Product.js';
+import { PRODUCT_VISIBILITY_DELAY_MS } from '../config/constants.js';
+
+const publicVisibilityFilter = () => ({
+    isAvailable: true,
+    $or: [
+        { visibleAt: { $exists: false } },
+        { visibleAt: null },
+        { visibleAt: { $lte: new Date() } }
+    ]
+});
 
 // ✅ SAVE a new product to MongoDB
 export const createProduct = async (req, res) => {
     try {
         const { name, description, price, mrp, category, group, image, stock, unit, unitValue } = req.body;
+
+        const visibleAt = new Date(Date.now() + PRODUCT_VISIBILITY_DELAY_MS);
 
         const product = new Product({
             name,
@@ -15,7 +27,8 @@ export const createProduct = async (req, res) => {
             image,
             stock,
             unit,
-            unitValue
+            unitValue,
+            visibleAt
         });
 
         const savedProduct = await product.save();
@@ -35,7 +48,7 @@ export const getAllProducts = async (req, res) => {
     try {
         const { category, group, search } = req.query;
 
-        let filter = { isAvailable: true };
+        let filter = { ...publicVisibilityFilter() };
 
         if (category) filter.category = category;
         if (group) filter.group = group;
@@ -56,7 +69,10 @@ export const getAllProducts = async (req, res) => {
 // ✅ FETCH single product by ID
 export const getProductById = async (req, res) => {
     try {
-        const product = await Product.findById(req.params.id);
+        const product = await Product.findOne({
+            _id: req.params.id,
+            ...publicVisibilityFilter()
+        });
 
         if (!product) {
             return res.status(404).json({ success: false, message: 'Product not found' });

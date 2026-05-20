@@ -38,12 +38,13 @@ services:
       - key: JWT_EXPIRES_IN
         value: 7d
 
-      # ── OTP ────────────────────────────────────────────────────────────────
-      - key: OTP_EXPIRES_IN
-        value: 10
-
       # ── CORS ───────────────────────────────────────────────────────────────
       # Set to your deployed frontend URL (or comma-separated list).
       # Example: https://my-shop.vercel.app
       - key: FRONTEND_URL
         sync: false           # ← SET IN RENDER DASHBOARD
+
+      # ── Firebase Admin (POST /api/auth/firebase-verify) ───────────────────
+      # Paste full service account JSON as one line in Render dashboard.
+      - key: FIREBASE_SERVICE_ACCOUNT_JSON
+        sync: false           # ← SET IN RENDER DASHBOARD (optional until using Firebase OTP)

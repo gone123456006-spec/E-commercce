@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://ecommerce-api-6y9p.onrender.com';
+import { apiUrl } from '../lib/api';
 
 /**
  * Get authentication token from localStorage
@@ -14,7 +14,7 @@ const getAuthToken = () => {
 export const addAddress = async (addressData: any) => {
     const token = getAuthToken();
 
-    const response = await fetch(`${API_BASE_URL}/api/address`, {
+    const response = await fetch(apiUrl('/api/address'), {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -37,7 +37,7 @@ export const addAddress = async (addressData: any) => {
 export const getAddresses = async () => {
     const token = getAuthToken();
 
-    const response = await fetch(`${API_BASE_URL}/api/address`, {
+    const response = await fetch(apiUrl('/api/address'), {
         method: 'GET',
         headers: {
             'Authorization': `Bearer ${token}`
@@ -58,7 +58,7 @@ export const getAddresses = async () => {
 export const updateAddress = async (id: string, addressData: any) => {
     const token = getAuthToken();
 
-    const response = await fetch(`${API_BASE_URL}/api/address/${id}`, {
+    const response = await fetch(apiUrl(`/api/address/${id}`), {
         method: 'PUT',
         headers: {
             'Content-Type': 'application/json',
@@ -81,7 +81,7 @@ export const updateAddress = async (id: string, addressData: any) => {
 export const deleteAddress = async (id: string) => {
     const token = getAuthToken();
 
-    const response = await fetch(`${API_BASE_URL}/api/address/${id}`, {
+    const response = await fetch(apiUrl(`/api/address/${id}`), {
         method: 'DELETE',
         headers: {
             'Authorization': `Bearer ${token}`
@@ -102,7 +102,7 @@ export const deleteAddress = async (id: string) => {
 export const setDefaultAddress = async (id: string) => {
     const token = getAuthToken();
 
-    const response = await fetch(`${API_BASE_URL}/api/address/${id}/default`, {
+    const response = await fetch(apiUrl(`/api/address/${id}/default`), {
         method: 'PUT',
         headers: {
             'Authorization': `Bearer ${token}`

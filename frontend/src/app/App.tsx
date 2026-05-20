@@ -1,4 +1,7 @@
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
+import { startProductsSync, stopProductsSync } from './services/productService';
+import { ScrollToTop } from './components/ScrollToTop';
 import { Toaster } from './components/ui/sonner';
 import { Navbar } from './components/Navbar';
 import { HomePage } from './components/HomePage';
@@ -15,15 +18,32 @@ import { CustomerOrders } from './components/CustomerOrders';
 import { AuthProvider } from './context/AuthContext';
 import { Footer } from './components/Footer';
 import { MobileBottomNav } from './components/MobileBottomNav';
+import { useLinkPrefetch } from './hooks/useLinkPrefetch';
 
 function AppRoutes() {
+  useLinkPrefetch();
   const location = useLocation();
   const isAdminPanel = location.pathname.startsWith('/admin-dashboard');
+  const isHome = location.pathname === '/';
 
   return (
-    <div className={`min-h-screen relative ${isAdminPanel ? 'bg-slate-100' : 'bg-yellow-50/40 pb-16 md:pb-0'}`}>
-      {!isAdminPanel && <Navbar />}
-      <main className="relative z-0">
+    <div
+      className={`flex min-h-screen flex-col relative max-w-full overflow-x-hidden font-body ${
+        isAdminPanel
+          ? 'bg-tawang-beige'
+          : `bg-tawang-cream ${isHome ? '' : 'pb-[calc(3.75rem+env(safe-area-inset-bottom,0px))] md:pb-0'}`
+      }`}
+    >
+      {!isAdminPanel && (
+        <header className="site-header-sticky fixed inset-x-0 top-0 z-[100] pt-[env(safe-area-inset-top,0px)]">
+          <Navbar />
+        </header>
+      )}
+      <main
+        className={`relative z-0 flex-1 max-w-full overflow-x-hidden ${
+          !isAdminPanel ? 'pt-[calc(3.5rem+env(safe-area-inset-top,0px))] sm:pt-[calc(4rem+env(safe-area-inset-top,0px))]' : ''
+        }`}
+      >
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/category/:category" element={<CategoryPage />} />
@@ -38,16 +58,22 @@ function AppRoutes() {
       </Routes>
       </main>
       <Toaster position="top-center" richColors />
-      {!isAdminPanel && location.pathname === '/' && <Footer />}
+      {!isAdminPanel && <Footer />}
       {!isAdminPanel && <MobileBottomNav />}
     </div>
   );
 }
 
 export default function App() {
+  useEffect(() => {
+    startProductsSync();
+    return () => stopProductsSync();
+  }, []);
+
   return (
     <AuthProvider>
       <BrowserRouter>
+        <ScrollToTop />
         <AppRoutes />
       </BrowserRouter>
     </AuthProvider>

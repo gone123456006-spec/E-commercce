@@ -1,12 +1,22 @@
-import { useState, useEffect, useMemo } from 'react';
+﻿import { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Search, ChevronRight, ChevronLeft, ShoppingBag, Truck, ShieldCheck, BadgeCheck, Star } from 'lucide-react';
 import { getProductById, getProducts } from '../data/products';
+import { ProductImage } from './ProductImage';
+import { CategoryCardLabel } from './CategoryCardLabel';
+import { SectionHeading } from './SectionHeading';
 import { addToCart, getCart, getOrders } from '../utils/storage';
+import { useHomepagePreload } from '../hooks/useHomepagePreload';
+import {
+  ADMIN_CATEGORY_THUMBNAILS_KEY,
+  getBeautyAndPersonalCareCategories,
+  getGroceryAndKitchenCategories,
+  getShopFromHereGroups,
+  getSnacksAndDrinksCategories,
+} from '../data/homepageCategories';
 import { toast } from 'sonner';
 
-const ADMIN_HOMEPAGE_BANNERS_KEY = 'admin_homepage_banners';
-const ADMIN_FLASH_DEALS_KEY = 'admin_homepage_flash_deals';
+import { readSiteContentFromClient } from '../services/siteContentService';
 
 const defaultBanners = [
   { id: 1, src: '/assets/images/Banner 1 .png', link: '/' },
@@ -19,18 +29,11 @@ const defaultBanners = [
 
 const getHomeBanners = () => {
   if (typeof window === 'undefined') return defaultBanners;
-  const runtimeBanners = (window as any).__ADMIN_HOMEPAGE_BANNERS__;
-  if (Array.isArray(runtimeBanners) && runtimeBanners.length > 0) {
-    return runtimeBanners;
+  const { homepageBanners } = readSiteContentFromClient();
+  if (homepageBanners.length > 0) {
+    return homepageBanners.filter((banner) => banner?.src?.trim());
   }
-  try {
-    const raw = localStorage.getItem(ADMIN_HOMEPAGE_BANNERS_KEY);
-    const parsed = raw ? JSON.parse(raw) : [];
-    if (!Array.isArray(parsed) || parsed.length === 0) return defaultBanners;
-    return parsed.filter((banner) => banner && typeof banner.src === 'string' && banner.src.trim());
-  } catch {
-    return defaultBanners;
-  }
+  return defaultBanners;
 };
 
 interface FlashDealConfig {
@@ -40,23 +43,11 @@ interface FlashDealConfig {
 
 const getFlashDealConfig = (): FlashDealConfig => {
   if (typeof window === 'undefined') return { cards: [] };
-  const runtime = (window as any).__ADMIN_FLASH_DEALS__;
-  if (runtime && typeof runtime === 'object') {
-    return {
-      cards: Array.isArray(runtime.cards) ? runtime.cards : [],
-      endAt: typeof runtime.endAt === 'string' ? runtime.endAt : ''
-    };
-  }
-  try {
-    const raw = localStorage.getItem(ADMIN_FLASH_DEALS_KEY);
-    const parsed = raw ? JSON.parse(raw) : {};
-    return {
-      cards: Array.isArray(parsed?.cards) ? parsed.cards : [],
-      endAt: typeof parsed?.endAt === 'string' ? parsed.endAt : ''
-    };
-  } catch {
-    return { cards: [] };
-  }
+  const { flashDeals } = readSiteContentFromClient();
+  return {
+    cards: Array.isArray(flashDeals.cards) ? flashDeals.cards : [],
+    endAt: typeof flashDeals.endAt === 'string' ? flashDeals.endAt : ''
+  };
 };
 
 const categories = [
@@ -80,160 +71,6 @@ const categories = [
   }
 ];
 
-const snacksAndDrinksCategories = [
-  {
-    id: 'chips-namkeen',
-    name: 'Chips &\nNamkeen',
-    image: 'https://images.unsplash.com/photo-1568909344668-6f14a07b56a0?w=400&h=400&fit=crop'
-  },
-  {
-    id: 'sweets-chocolates',
-    name: 'Sweets &\nChocolates',
-    image: 'https://images.unsplash.com/photo-1548843268-de31c26284de?w=400&h=400&fit=crop'
-  },
-  {
-    id: 'drinks-juices',
-    name: 'Drinks &\nJuices',
-    image: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=400&h=400&fit=crop'
-  },
-  {
-    id: 'tea-coffee',
-    name: 'Tea, Coffee\n& Milk Drinks',
-    image: 'https://images.unsplash.com/photo-1559525839-b184a4d698c7?w=400&h=400&fit=crop'
-  },
-  {
-    id: 'instant-food',
-    name: 'Instant Food',
-    image: 'https://images.unsplash.com/photo-1598514982205-f36b96d1e8d4?w=400&h=400&fit=crop'
-  },
-  {
-    id: 'sauces-spreads',
-    name: 'Sauces &\nSpreads',
-    image: 'https://images.unsplash.com/photo-1528751014936-863e6e8a4a5b?w=400&h=400&fit=crop'
-  },
-  {
-    id: 'paan-corner',
-    name: 'Paan Corner',
-    image: 'https://images.unsplash.com/photo-1628169829377-5264b7bd1608?w=400&h=400&fit=crop'
-  },
-  {
-    id: 'ice-creams',
-    name: 'Ice Creams &\nMore',
-    image: 'https://images.unsplash.com/photo-1557142046-c704a3adf8f7?w=400&h=400&fit=crop'
-  }
-];
-
-
-
-
-
-
-const groceryAndKitchenCategories = [
-  {
-    id: 'vegetables-fruits',
-    name: 'Vegetables &\nFruits',
-    image: 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=400&h=400&fit=crop'
-  },
-  {
-    id: 'atta-rice-dal',
-    name: 'Atta, Rice &\nDal',
-    image: 'https://cdn.grofers.com/cdn-cgi/image/f=auto,fit=scale-down,q=70,metadata=none,w=270/app/images/products/sliding_image/481977a.jpg'
-  },
-  {
-    id: 'oil-ghee-masala',
-    name: 'Oil, Ghee &\nMasala',
-    image: 'https://cdn.grofers.com/cdn-cgi/image/f=auto,fit=scale-down,q=70,metadata=none,w=270/app/images/products/sliding_image/190a.jpg'
-  },
-  {
-    id: 'dairy-bread-eggs',
-    name: 'Dairy, Bread &\nEggs',
-    image: 'https://cdn.grofers.com/cdn-cgi/image/f=auto,fit=scale-down,q=70,metadata=none,w=270/app/images/products/sliding_image/14a.jpg'
-  },
-  {
-    id: 'bakery-biscuits',
-    name: 'Bakery &\nBiscuits',
-    image: 'https://cdn.grofers.com/cdn-cgi/image/f=auto,fit=scale-down,q=70,metadata=none,w=270/app/images/products/sliding_image/496979a.jpg'
-  },
-  {
-    id: 'dry-fruits-cereals',
-    name: 'Dry Fruits &\nCereals',
-    image: 'https://cdn.grofers.com/cdn-cgi/image/f=auto,fit=scale-down,q=70,metadata=none,w=270/app/images/products/sliding_image/105655a.jpg'
-  },
-  {
-    id: 'chicken-meat-fish',
-    name: 'Chicken,\nMeat & Fish',
-    image: 'https://images.unsplash.com/photo-1587593810167-a84920ea0781?w=400&h=400&fit=crop'
-  },
-  {
-    id: 'kitchenware-appliances',
-    name: 'Kitchenware &\nAppliances',
-    image: 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=400&h=400&fit=crop'
-  }
-];
-
-const beautyAndPersonalCareCategories = [
-  {
-    id: 'bath-body',
-    name: 'Bath & Body',
-    image: 'https://images.unsplash.com/photo-1629363447385-a7b37db457fc?w=400&h=400&fit=crop'
-  },
-  {
-    id: 'hair',
-    name: 'Hair',
-    image: 'https://images.unsplash.com/photo-1526947425960-945c6e72858f?w=400&h=400&fit=crop'
-  },
-  {
-    id: 'skin-face',
-    name: 'Skin & Face',
-    image: 'https://images.unsplash.com/photo-1556228578-0d85b1a4d571?w=400&h=400&fit=crop'
-  },
-  {
-    id: 'beauty-cosmetics',
-    name: 'Beauty &\nCosmetics',
-    image: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=400&h=400&fit=crop'
-  },
-  {
-    id: 'feminine-hygiene',
-    name: 'Feminine\nHygiene',
-    image: 'https://images.unsplash.com/photo-1620608643809-5626292376fb?w=400&h=400&fit=crop'
-  },
-  {
-    id: 'baby-care',
-    name: 'Baby Care',
-    image: 'https://images.unsplash.com/photo-1555252333-9f8e92e65df9?w=400&h=400&fit=crop'
-  },
-  {
-    id: 'health-pharma',
-    name: 'Health &\nPharma',
-    image: 'https://images.unsplash.com/photo-1584308666744-24d5e169ddef?w=400&h=400&fit=crop'
-  },
-  {
-    id: 'sexual-wellness',
-    name: 'Sexual\nWellness',
-    image: 'https://images.unsplash.com/photo-1614850715649-1d0106293cb1?w=400&h=400&fit=crop'
-  }
-];
-
-const shopFromHereGroups = [
-  {
-    id: 'snacks-drinks',
-    title: 'Snacks & Drinks',
-    categories: snacksAndDrinksCategories,
-    viewAllCategoryId: 'chips-namkeen'
-  },
-  {
-    id: 'grocery-kitchen',
-    title: 'Grocery & Kitchen',
-    categories: groceryAndKitchenCategories,
-    viewAllCategoryId: 'vegetables-fruits'
-  },
-  {
-    id: 'beauty-personal-care',
-    title: 'Beauty & Personal Care',
-    categories: beautyAndPersonalCareCategories,
-    viewAllCategoryId: 'bath-body'
-  }
-];
 
 const seasonalCampaigns = [
   {
@@ -294,9 +131,24 @@ export function HomePage() {
   });
   const [flashDealConfig, setFlashDealConfig] = useState<FlashDealConfig>(() => getFlashDealConfig());
   const [, setProductVersion] = useState(0);
+  const [categoryThumbVersion, setCategoryThumbVersion] = useState(0);
   const navigate = useNavigate();
   const liveProducts = getProducts();
   const orders = getOrders();
+
+  const snacksAndDrinksCategories = useMemo(
+    () => getSnacksAndDrinksCategories(),
+    [categoryThumbVersion]
+  );
+  const groceryAndKitchenCategories = useMemo(
+    () => getGroceryAndKitchenCategories(),
+    [categoryThumbVersion]
+  );
+  const beautyAndPersonalCareCategories = useMemo(
+    () => getBeautyAndPersonalCareCategories(),
+    [categoryThumbVersion]
+  );
+  const shopFromHereGroups = useMemo(() => getShopFromHereGroups(), [categoryThumbVersion]);
 
   const averageRating = useMemo(() => {
     if (liveProducts.length === 0) return 0;
@@ -371,6 +223,32 @@ export function HomePage() {
     return liveProducts.filter((p) => p.category.includes('health') || p.category.includes('wellness')).slice(0, 14);
   }, [brandFilter, liveProducts]);
 
+  const categoryImages = useMemo(
+    () =>
+      [
+        ...categories,
+        ...snacksAndDrinksCategories,
+        ...groceryAndKitchenCategories,
+        ...beautyAndPersonalCareCategories,
+      ]
+        .map((c) => c.image)
+        .filter(Boolean),
+    [categoryThumbVersion, snacksAndDrinksCategories, groceryAndKitchenCategories, beautyAndPersonalCareCategories]
+  );
+
+  useHomepagePreload({
+    products: liveProducts,
+    banners,
+    categoryImages,
+    sectionProducts: [
+      flashDealProducts,
+      brandFilteredProducts,
+      recommendedProducts,
+      buyAgainProducts,
+      recentlyViewedProducts,
+    ],
+  });
+
   useEffect(() => {
     if (banners.length <= 1) return;
     const timer = setInterval(() => {
@@ -385,9 +263,19 @@ export function HomePage() {
       setBanners(getHomeBanners());
       setFlashDealConfig(getFlashDealConfig());
       setProductVersion((v) => v + 1);
+      setCategoryThumbVersion((v) => v + 1);
+    };
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === ADMIN_CATEGORY_THUMBNAILS_KEY) {
+        setCategoryThumbVersion((v) => v + 1);
+      }
     };
     window.addEventListener('productsUpdated', onProductsUpdated);
-    return () => window.removeEventListener('productsUpdated', onProductsUpdated);
+    window.addEventListener('storage', onStorage);
+    return () => {
+      window.removeEventListener('productsUpdated', onProductsUpdated);
+      window.removeEventListener('storage', onStorage);
+    };
   }, []);
 
   useEffect(() => {
@@ -479,12 +367,12 @@ export function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-yellow-50/40">
+    <div className="max-w-full overflow-x-hidden bg-tawang-cream">
       {/* Search Bar */}
-      <div className="sticky top-14 sm:top-16 z-40 py-3 px-3 sm:py-4 sm:px-4">
+      <div className="fixed left-0 right-0 z-[90] border-b border-tawang-gold/10 bg-tawang-cream/95 py-2.5 px-3 backdrop-blur-md top-[calc(3.5rem+env(safe-area-inset-top,0px))] md:sticky md:top-[calc(4rem+env(safe-area-inset-top,0px))] md:z-40 md:py-3 md:px-4 sm:py-4">
         <div className="max-w-xl mx-auto">
           <form onSubmit={handleSearch}>
-            <div className="relative flex items-center bg-white rounded-full shadow-sm overflow-hidden">
+            <div className="relative flex items-center bg-white rounded-full shadow-md border border-tawang-gold/20 overflow-hidden">
               <input
                 type="search"
                 inputMode="search"
@@ -496,7 +384,7 @@ export function HomePage() {
               />
               <button
                 type="submit"
-                className="m-1 flex-shrink-0 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-green-600 active:scale-95 transition-all duration-200 text-yellow-100 flex items-center justify-center touch-manipulation hover:bg-green-500"
+                className="m-1 flex-shrink-0 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-tawang-gold active:scale-95 transition-all duration-200 text-tawang-navy flex items-center justify-center touch-manipulation hover:shadow-tawang-glow"
               >
                 <Search className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
@@ -504,10 +392,11 @@ export function HomePage() {
           </form>
         </div>
       </div>
+      <div className="h-[3.25rem] shrink-0 md:hidden" aria-hidden />
 
       {/* Auto-Sliding Banner Section */}
       <div className="w-full max-w-7xl mx-auto px-3 sm:px-4 py-3 sm:py-4 md:py-6">
-        <div className="relative group rounded-xl sm:rounded-2xl overflow-hidden shadow-lg bg-gray-100 h-[160px] sm:h-auto w-full">
+        <div className="relative group rounded-xl sm:rounded-2xl overflow-hidden shadow-lg bg-tawang-beige h-[160px] sm:h-auto w-full">
           {banners.map((banner, idx) => (
             <Link
               key={idx}
@@ -518,6 +407,9 @@ export function HomePage() {
               <img
                 src={banner.src}
                 alt={`Banner ${idx + 1}`}
+                loading={idx === 0 ? 'eager' : 'lazy'}
+                decoding="async"
+                fetchPriority={idx === 0 ? 'high' : 'low'}
                 className="w-full h-full sm:h-auto object-cover sm:object-top"
               />
             </Link>
@@ -558,36 +450,29 @@ export function HomePage() {
 
       {/* Categories Section */}
       <div id="shop-by-category" className="max-w-7xl mx-auto px-3 sm:px-4 py-6 sm:py-8 md:py-16">
-        <div className="text-center mb-6 sm:mb-8 md:mb-12">
-          <h2 className="text-xl sm:text-2xl md:text-4xl mb-2 sm:mb-3 md:mb-4">Shop by Category</h2>
-          <p className="text-sm sm:text-base md:text-xl text-gray-600 px-2">
-            Browse our wide selection of products
-          </p>
-        </div>
+        <SectionHeading
+          className="mb-6 sm:mb-8 md:mb-12"
+          title="Shop by Category"
+          subtitle="Browse our wide selection of products"
+          titleClassName="md:text-2xl lg:text-3xl"
+        />
 
         <div className="grid grid-cols-3 gap-2 sm:gap-4 md:gap-8">
           {categories.map((category) => (
             <Link
               key={category.id}
               to={`/category/${category.id}`}
-              className="group relative h-28 sm:h-40 md:h-56 rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 transform active:scale-[0.98] sm:hover:-translate-y-2 touch-manipulation"
+              className="group flex flex-col rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden bg-tawang-cream border border-tawang-gold/15 shadow-md hover:shadow-lg transition-all duration-300 active:scale-[0.98] sm:hover:-translate-y-1 touch-manipulation"
             >
-              <img
-                src={category.image}
-                alt={category.name}
-                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex flex-col justify-end p-2 sm:p-4 md:p-6">
-                <h3 className="text-sm sm:text-xl md:text-3xl text-white mb-0.5 sm:mb-1 md:mb-2 font-medium">
-                  {category.name}
-                </h3>
-                <p className="text-white/90 text-xs sm:text-sm md:text-lg mb-1 sm:mb-2 md:mb-3 hidden sm:block">
-                  {category.description}
-                </p>
-                <div className="flex items-center text-white group-hover:text-yellow-400 transition-colors">
-                  <span className="text-xs sm:text-base md:text-lg">Shop Now</span>
-                  <ChevronRight className="w-3 h-3 sm:w-5 sm:h-5 md:w-6 md:h-6 ml-1 sm:ml-2 group-hover:translate-x-2 transition-transform" />
-                </div>
+              <div className="relative h-24 sm:h-36 md:h-48 overflow-hidden">
+                <img
+                  src={category.image}
+                  alt={category.name}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                />
+              </div>
+              <div className="flex flex-1 flex-col items-center justify-center px-2 py-3 sm:py-4 bg-tawang-cream">
+                <CategoryCardLabel name={category.name} size="lg" />
               </div>
             </Link>
           ))}
@@ -596,9 +481,7 @@ export function HomePage() {
 
       {/* Snacks & Drinks Section */}
       <div className="max-w-7xl mx-auto px-3 sm:px-4 pb-6 sm:pb-8 md:pb-12">
-        <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-4 sm:mb-6 text-gray-900">
-          Snacks & Drinks
-        </h2>
+        <SectionHeading className="mb-4 sm:mb-6" title="Snacks & Drinks" />
         <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3 sm:gap-4 md:gap-5">
           {snacksAndDrinksCategories.map((category) => (
             <Link
@@ -606,16 +489,15 @@ export function HomePage() {
               to={`/category/${category.id}`}
               className="flex flex-col items-center group touch-manipulation"
             >
-              <div className="w-full aspect-square bg-[#EEF5F5] rounded-xl sm:rounded-2xl flex items-center justify-center overflow-hidden mb-2 sm:mb-3 group-hover:shadow-[0_4px_12px_rgba(0,0,0,0.05)] transition-all duration-300">
+              <div className="w-full aspect-square bg-tawang-beige rounded-xl sm:rounded-2xl flex items-center justify-center overflow-hidden mb-2 sm:mb-3 group-hover:shadow-md transition-all duration-300">
                 <img
+                  key={`${category.id}-${category.image}`}
                   src={category.image}
                   alt={category.name.replace('\n', ' ')}
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />
               </div>
-              <h3 className="text-[10px] sm:text-xs md:text-sm font-semibold text-center text-gray-800 leading-[1.2] whitespace-pre-line">
-                {category.name}
-              </h3>
+              <CategoryCardLabel name={category.name} size="sm" />
             </Link>
           ))}
         </div>
@@ -694,13 +576,6 @@ export function HomePage() {
           animation: shop-bag-bounce 1.8s ease-in-out infinite;
           transform-origin: center;
         }
-        .no-scrollbar {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-        .no-scrollbar::-webkit-scrollbar {
-          display: none;
-        }
       `}</style>
 
 
@@ -713,9 +588,7 @@ export function HomePage() {
 
       {/* Grocery & Kitchen Section */}
       <div className="max-w-7xl mx-auto px-3 sm:px-4 pb-6 sm:pb-8 md:pb-12 text-black">
-        <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-4 sm:mb-6 text-gray-900">
-          Grocery & Kitchen
-        </h2>
+        <SectionHeading className="mb-4 sm:mb-6" title="Grocery & Kitchen" />
         <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3 sm:gap-4 md:gap-5">
           {groceryAndKitchenCategories.map((category) => (
             <Link
@@ -723,16 +596,15 @@ export function HomePage() {
               to={`/category/${category.id}`}
               className="flex flex-col items-center group touch-manipulation"
             >
-              <div className="w-full aspect-square bg-[#FDF4F5] rounded-xl sm:rounded-2xl flex items-center justify-center overflow-hidden mb-2 sm:mb-3 group-hover:shadow-[0_4px_12px_rgba(0,0,0,0.05)] transition-all duration-300">
+              <div className="w-full aspect-square bg-tawang-beige rounded-xl sm:rounded-2xl flex items-center justify-center overflow-hidden mb-2 sm:mb-3 group-hover:shadow-md transition-all duration-300">
                 <img
+                  key={`${category.id}-${category.image}`}
                   src={category.image}
                   alt={category.name.replace('\n', ' ')}
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />
               </div>
-              <h3 className="text-[10px] sm:text-xs md:text-sm font-semibold text-center text-gray-800 leading-[1.2] whitespace-pre-line">
-                {category.name}
-              </h3>
+              <CategoryCardLabel name={category.name} size="sm" />
             </Link>
           ))}
         </div>
@@ -740,9 +612,7 @@ export function HomePage() {
 
       {/* Beauty & Personal Care Section */}
       <div className="max-w-7xl mx-auto px-3 sm:px-4 pb-6 sm:pb-8 md:pb-12 text-black">
-        <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-4 sm:mb-6 text-gray-900">
-          Beauty & Personal Care
-        </h2>
+        <SectionHeading className="mb-4 sm:mb-6" title="Beauty & Personal Care" />
         <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3 sm:gap-4 md:gap-5">
           {beautyAndPersonalCareCategories.map((category) => (
             <Link
@@ -750,16 +620,15 @@ export function HomePage() {
               to={`/category/${category.id}`}
               className="flex flex-col items-center group touch-manipulation"
             >
-              <div className="w-full aspect-square bg-[#EEF5F5] rounded-xl sm:rounded-2xl flex items-center justify-center overflow-hidden mb-2 sm:mb-3 group-hover:shadow-[0_4px_12px_rgba(0,0,0,0.05)] transition-all duration-300">
+              <div className="w-full aspect-square bg-tawang-beige rounded-xl sm:rounded-2xl flex items-center justify-center overflow-hidden mb-2 sm:mb-3 group-hover:shadow-md transition-all duration-300">
                 <img
+                  key={`${category.id}-${category.image}`}
                   src={category.image}
                   alt={category.name.replace('\n', ' ')}
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />
               </div>
-              <h3 className="text-[10px] sm:text-xs md:text-sm font-semibold text-center text-gray-800 leading-[1.2] whitespace-pre-line">
-                {category.name}
-              </h3>
+              <CategoryCardLabel name={category.name} size="sm" />
             </Link>
           ))}
         </div>
@@ -772,17 +641,17 @@ export function HomePage() {
             alt={seasonalCampaign.title}
             className="absolute inset-0 w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-pink-600/90 via-fuchsia-500/80 to-pink-400/60" />
+          <div className="absolute inset-0 bg-gradient-to-r from-tawang-navy/95 via-tawang-navy/80 to-tawang-gold/40" />
           <div className="relative z-10 h-full p-4 sm:p-6 md:p-8 flex flex-col justify-center max-w-xl">
-            <p className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white drop-shadow-sm">
+            <p className="font-heading text-2xl sm:text-3xl md:text-4xl text-white drop-shadow-sm">
               {seasonalCampaign.title}
             </p>
-            <p className="text-sm sm:text-base md:text-lg text-pink-50 mt-1 sm:mt-2">
+            <p className="text-sm sm:text-base md:text-lg text-tawang-cream/90 mt-1 sm:mt-2 font-body">
               {seasonalCampaign.subtitle}
             </p>
             <Link
               to={seasonalCampaign.cta}
-              className="inline-flex mt-3 sm:mt-4 w-fit px-4 sm:px-5 py-2 rounded-lg bg-white text-pink-700 text-sm sm:text-base font-semibold hover:bg-pink-50 transition-colors"
+              className="inline-flex mt-3 sm:mt-4 w-fit px-4 sm:px-5 py-2 rounded-xl bg-tawang-gold text-tawang-navy text-sm sm:text-base font-semibold hover:shadow-tawang-glow transition-all"
             >
               Shop Campaign
             </Link>
@@ -791,17 +660,19 @@ export function HomePage() {
       </div>
 
       <div id="flash-deals" className="max-w-7xl mx-auto px-3 sm:px-4 pb-6">
-        <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">Flash Deals</h3>
-          <div className="text-xs sm:text-sm font-semibold text-red-600 bg-red-50 px-2.5 py-1 rounded">Ends in {hrs}:{mins}:{secs}</div>
+        <SectionHeading as="h3" className="mb-2" title="Flash Deals" />
+        <div className="mb-3 flex justify-center">
+          <div className="text-xs sm:text-sm font-semibold text-red-600 bg-red-50 px-2.5 py-1 rounded">
+            Ends in {hrs}:{mins}:{secs}
+          </div>
         </div>
-        <div className="overflow-x-auto no-scrollbar">
+        <div className="scroll-row-x no-scrollbar">
           <div className="flex w-max gap-3">
             {flashDealProducts.map((product) => (
               <div key={`flash-${product.id}`} className="min-w-[180px] sm:min-w-[210px] bg-white border rounded-xl p-2.5">
                 <Link to={`/product/${product.id}`} onClick={() => trackProductView(product.id)}>
-                  <div className="relative">
-                    <img src={product.image} alt={product.name} className="w-full h-28 sm:h-32 object-cover rounded-lg mb-2" />
+                  <div className="relative mb-2">
+                    <ProductImage priority size="md" src={product.image} alt={product.name} containerClassName="rounded-lg" />
                     {(flashDealConfig.cards.find((c) => c.productId === product.id)?.badgeText || (product.stock <= 20 ? 'Low Stock' : 'Flash Deal')) && (
                       <span className="absolute top-1 left-1 text-[10px] px-1.5 py-0.5 bg-red-600 text-white rounded">
                         {flashDealConfig.cards.find((c) => c.productId === product.id)?.badgeText || (product.stock <= 20 ? 'Low Stock' : 'Flash Deal')}
@@ -810,8 +681,8 @@ export function HomePage() {
                   </div>
                   <p className="text-xs sm:text-sm font-semibold text-gray-900 line-clamp-2">{product.name}</p>
                 </Link>
-                <p className="mt-1 text-sm font-bold text-green-700">₹{product.price}</p>
-                <button onClick={() => handleAddToCart(product.id)} className="mt-2 w-full px-3 py-1.5 text-xs sm:text-sm bg-green-600 text-yellow-100 rounded-lg">
+                <p className="mt-1 text-sm font-bold text-tawang-gold">â‚¹{product.price}</p>
+                <button onClick={() => handleAddToCart(product.id)} className="mt-2 w-full px-3 py-1.5 text-xs sm:text-sm tawang-btn-primary rounded-xl">
                   Add to Cart
                 </button>
               </div>
@@ -822,18 +693,18 @@ export function HomePage() {
 
       {/* Buying History - Priority Position */}
       <div className="max-w-7xl mx-auto px-3 sm:px-4 pb-6">
-        <div className="bg-white rounded-xl border border-green-200 p-3 sm:p-4">
+        <div className="bg-white rounded-xl border border-tawang-gold/25 p-3 sm:p-4">
           <div className="flex items-center justify-between mb-2">
-            <h4 className="text-sm sm:text-base md:text-lg font-semibold text-gray-900">Your Buying History</h4>
-            <span className="text-[11px] sm:text-xs px-2 py-1 rounded-full bg-green-100 text-green-700">Buy Again</span>
+            <h4 className="font-heading text-sm sm:text-base md:text-lg font-semibold text-gray-900">Your Buying History</h4>
+            <span className="text-[11px] sm:text-xs px-2 py-1 rounded-full bg-tawang-beige text-tawang-gold">Buy Again</span>
           </div>
-          <div className="overflow-x-auto no-scrollbar">
+          <div className="scroll-row-x no-scrollbar">
             <div className="flex w-max gap-2.5">
               {buyAgainProducts.length > 0 ? buyAgainProducts.map((p) => (
                 <Link key={`history-${p.id}`} to={`/product/${p.id}`} onClick={() => trackProductView(p.id)} className="min-w-[150px] sm:min-w-[190px] border rounded-lg p-2 bg-white">
-                  <img src={p.image} alt={p.name} className="w-full h-24 sm:h-28 object-cover rounded-md mb-1.5" />
+                  <ProductImage size="xs" src={p.image} alt={p.name} containerClassName="rounded-md mb-1.5" />
                   <p className="text-xs sm:text-sm line-clamp-2">{p.name}</p>
-                  <p className="text-sm font-bold text-green-700 mt-1">₹{p.price}</p>
+                  <p className="text-sm font-bold text-tawang-gold mt-1">â‚¹{p.price}</p>
                 </Link>
               )) : (
                 <p className="text-xs sm:text-sm text-gray-500">No buying history yet. Place some orders to see this section.</p>
@@ -852,18 +723,18 @@ export function HomePage() {
             key={section.title}
             className={`rounded-xl p-3 sm:p-4 border ${
               section.title === 'Recently Viewed'
-                ? 'bg-gradient-to-r from-violet-50 to-fuchsia-50 border-violet-200'
-                : 'bg-white'
+                ? 'bg-gradient-to-r from-tawang-beige to-tawang-cream border-tawang-gold/30'
+                : 'bg-white border-tawang-navy/10'
             }`}
           >
-            <h4 className="text-sm sm:text-base md:text-lg font-semibold mb-2">{section.title}</h4>
-            <div className="overflow-x-auto no-scrollbar">
+            <h4 className="font-heading text-sm sm:text-base md:text-lg font-semibold mb-2">{section.title}</h4>
+            <div className="scroll-row-x no-scrollbar">
               <div className="flex w-max gap-2.5">
                 {section.products.length > 0 ? section.products.map((p) => (
                   <Link key={`${section.title}-${p.id}`} to={`/product/${p.id}`} onClick={() => trackProductView(p.id)} className="min-w-[150px] sm:min-w-[190px] border rounded-lg p-2">
-                    <img src={p.image} alt={p.name} className="w-full h-24 sm:h-28 object-cover rounded-md mb-1.5" />
+                    <ProductImage size="xs" src={p.image} alt={p.name} containerClassName="rounded-md mb-1.5" />
                     <p className="text-xs sm:text-sm line-clamp-2">{p.name}</p>
-                    <p className="text-sm font-bold text-green-700 mt-1">₹{p.price}</p>
+                    <p className="text-sm font-bold text-tawang-gold mt-1">â‚¹{p.price}</p>
                   </Link>
                 )) : (
                   <p className="text-xs sm:text-sm text-gray-500">No data yet. Start ordering to personalize this section.</p>
@@ -875,28 +746,28 @@ export function HomePage() {
       </div>
 
       <div id="top-brands" className="max-w-7xl mx-auto px-3 sm:px-4 pb-6">
-        <h3 className="text-lg sm:text-xl md:text-2xl font-bold mb-3">Top Brands</h3>
-        <div className="overflow-x-auto no-scrollbar mb-3">
+        <SectionHeading as="h3" className="mb-3" title="Top Brands" />
+        <div className="scroll-row-x no-scrollbar mb-3">
           <div className="flex w-max gap-2">
             {topBrands.map((brand) => (
               <button
                 key={brand.id}
                 type="button"
                 onClick={() => setBrandFilter(brand.id)}
-                className={`px-3 py-2 rounded-lg border text-xs sm:text-sm ${brandFilter === brand.id ? 'bg-green-600 text-yellow-100 border-green-600' : 'bg-white text-gray-700 border-gray-300'}`}
+                className={`px-3 py-2 rounded-lg border text-xs sm:text-sm ${brandFilter === brand.id ? 'bg-tawang-gold text-white/90 border-tawang-gold' : 'bg-white text-gray-700 border-gray-300'}`}
               >
                 {brand.label}
               </button>
             ))}
           </div>
         </div>
-        <div className="overflow-x-auto no-scrollbar">
+        <div className="scroll-row-x no-scrollbar">
           <div className="flex w-max gap-3">
             {brandFilteredProducts.map((p) => (
               <Link key={`brand-${p.id}`} to={`/product/${p.id}`} onClick={() => trackProductView(p.id)} className="min-w-[170px] sm:min-w-[200px] bg-white border rounded-xl p-2.5">
-                <img src={p.image} alt={p.name} className="w-full h-28 object-cover rounded-lg mb-2" />
+                <ProductImage size="md" src={p.image} alt={p.name} containerClassName="rounded-lg mb-2" />
                 <p className="text-xs sm:text-sm line-clamp-2">{p.name}</p>
-                <p className="text-sm font-bold text-green-700 mt-1">₹{p.price}</p>
+                <p className="text-sm font-bold text-tawang-gold mt-1">â‚¹{p.price}</p>
               </Link>
             ))}
           </div>
@@ -904,13 +775,13 @@ export function HomePage() {
       </div>
 
       {/* Shop From Here */}
-      <div id="shop-from-here" className="max-w-7xl mx-auto px-3 sm:px-4 pt-3 sm:pt-4 md:pt-5 pb-8 sm:pb-10 md:pb-14">
-        <div className="mb-6 flex items-center justify-center gap-2 sm:gap-3">
-          <ShoppingBag className="w-5 h-5 sm:w-6 sm:h-6 text-green-700 shop-bag-bounce" />
-          <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 text-center">
-            Shop From Here
-          </h3>
-        </div>
+      <div id="shop-from-here" className="max-w-7xl mx-auto px-3 sm:px-4 pt-3 sm:pt-4 md:pt-5 pb-4 sm:pb-6 md:pb-8">
+        <SectionHeading
+          as="h3"
+          className="mb-6"
+          title="Shop From Here"
+          titleClassName="text-base sm:text-lg md:text-xl"
+        />
         <div className="space-y-7">
           {shopFromHereGroups.map((group) => {
             const groupCategoryIds = new Set(group.categories.map((category) => category.id));
@@ -935,10 +806,10 @@ export function HomePage() {
 
             return (
               <section key={group.id}>
-                <h4 className="text-base sm:text-lg md:text-xl font-semibold text-gray-900 mb-3">
+                <h4 className="font-heading mb-3 text-center text-sm uppercase tracking-[0.1em] text-tawang-navy sm:text-base md:text-lg">
                   {group.title}
                 </h4>
-                <div className="overflow-x-auto no-scrollbar">
+                <div className="scroll-row-x no-scrollbar">
                   <div className="flex w-max gap-3 sm:gap-4">
                     {primaryRowProducts.map((product, index) => {
                       const mrp = Math.round(product.price * 1.15);
@@ -948,13 +819,14 @@ export function HomePage() {
                       return (
                         <div
                           key={`${product.id}-${index}`}
-                          className="min-w-[180px] sm:min-w-[200px] md:min-w-[220px] bg-white border border-rose-100 rounded-xl p-2.5 sm:p-3 shadow-sm"
+                          className="min-w-[180px] sm:min-w-[200px] md:min-w-[220px] bg-white border border-tawang-gold/15 tawang-card rounded-xl p-2.5 sm:p-3 shadow-sm"
                         >
                           <Link to={`/product/${product.id}`} onClick={() => trackProductView(product.id)} className="block">
-                            <img
+                            <ProductImage
+                              size="md"
                               src={product.image}
                               alt={product.name}
-                              className="w-full h-28 sm:h-32 md:h-36 object-cover rounded-lg mb-2"
+                              containerClassName="rounded-lg mb-2"
                             />
                             <p className="text-xs sm:text-sm font-semibold text-gray-900 line-clamp-2 min-h-[2.2rem]">
                               {product.name}
@@ -962,18 +834,18 @@ export function HomePage() {
                           </Link>
 
                           <div className="mt-2 flex items-center gap-2">
-                            <p className="text-sm sm:text-base font-bold text-green-700">₹{product.price}</p>
-                            <p className="text-xs text-gray-400 line-through">₹{mrp}</p>
+                            <p className="text-sm sm:text-base font-bold text-tawang-gold">â‚¹{product.price}</p>
+                            <p className="text-xs text-gray-400 line-through">â‚¹{mrp}</p>
                             <span className="text-[10px] sm:text-xs text-emerald-700 font-semibold">{discountPercent}% OFF</span>
                           </div>
 
                           <div className="mt-2 flex items-center justify-between">
-                            <p className="text-xs sm:text-sm text-gray-600">⭐ {product.rating.toFixed(1)}</p>
+                            <p className="text-xs sm:text-sm text-gray-600">â­ {product.rating.toFixed(1)}</p>
                             <div className="inline-flex items-center border rounded-md overflow-hidden">
                               <button
                                 type="button"
                                 onClick={() => updateSelectedQuantity(product.id, selectedQty - 1)}
-                                className="px-2 py-1 text-sm hover:bg-gray-100"
+                                className="px-2 py-1 text-sm hover:bg-tawang-beige"
                                 aria-label={`Decrease quantity for ${product.name}`}
                               >
                                 -
@@ -982,7 +854,7 @@ export function HomePage() {
                               <button
                                 type="button"
                                 onClick={() => updateSelectedQuantity(product.id, selectedQty + 1)}
-                                className="px-2 py-1 text-sm hover:bg-gray-100"
+                                className="px-2 py-1 text-sm hover:bg-tawang-beige"
                                 aria-label={`Increase quantity for ${product.name}`}
                               >
                                 +
@@ -993,7 +865,7 @@ export function HomePage() {
                           <button
                             type="button"
                             onClick={() => handleAddToCart(product.id)}
-                            className="mt-3 w-full px-3 py-2 text-xs sm:text-sm bg-green-600 text-yellow-100 rounded-lg hover:bg-green-500 transition-colors"
+                            className="mt-3 w-full px-3 py-2 text-xs sm:text-sm bg-tawang-gold text-white/90 rounded-lg hover:bg-tawang-gold transition-colors"
                           >
                             Add to Cart
                           </button>
@@ -1003,7 +875,7 @@ export function HomePage() {
                   </div>
                 </div>
                 {secondaryRowProducts.length > 0 && (
-                  <div className="overflow-x-auto no-scrollbar mt-3">
+                  <div className="scroll-row-x no-scrollbar mt-3">
                     <div className="flex w-max gap-3 sm:gap-4">
                       {secondaryRowProducts.map((product, index) => {
                         const mrp = Math.round(product.price * 1.15);
@@ -1013,13 +885,14 @@ export function HomePage() {
                         return (
                           <div
                             key={`${group.id}-extra-${product.id}-${index}`}
-                            className="min-w-[180px] sm:min-w-[200px] md:min-w-[220px] bg-white border border-rose-100 rounded-xl p-2.5 sm:p-3 shadow-sm"
+                            className="min-w-[180px] sm:min-w-[200px] md:min-w-[220px] bg-white border border-tawang-gold/15 tawang-card rounded-xl p-2.5 sm:p-3 shadow-sm"
                           >
                             <Link to={`/product/${product.id}`} onClick={() => trackProductView(product.id)} className="block">
-                              <img
+                              <ProductImage
+                                size="md"
                                 src={product.image}
                                 alt={product.name}
-                                className="w-full h-28 sm:h-32 md:h-36 object-cover rounded-lg mb-2"
+                                containerClassName="rounded-lg mb-2"
                               />
                               <p className="text-xs sm:text-sm font-semibold text-gray-900 line-clamp-2 min-h-[2.2rem]">
                                 {product.name}
@@ -1027,18 +900,18 @@ export function HomePage() {
                             </Link>
 
                             <div className="mt-2 flex items-center gap-2">
-                              <p className="text-sm sm:text-base font-bold text-green-700">₹{product.price}</p>
-                              <p className="text-xs text-gray-400 line-through">₹{mrp}</p>
+                              <p className="text-sm sm:text-base font-bold text-tawang-gold">â‚¹{product.price}</p>
+                              <p className="text-xs text-gray-400 line-through">â‚¹{mrp}</p>
                               <span className="text-[10px] sm:text-xs text-emerald-700 font-semibold">{discountPercent}% OFF</span>
                             </div>
 
                             <div className="mt-2 flex items-center justify-between">
-                              <p className="text-xs sm:text-sm text-gray-600">⭐ {product.rating.toFixed(1)}</p>
+                              <p className="text-xs sm:text-sm text-gray-600">â­ {product.rating.toFixed(1)}</p>
                               <div className="inline-flex items-center border rounded-md overflow-hidden">
                                 <button
                                   type="button"
                                   onClick={() => updateSelectedQuantity(product.id, selectedQty - 1)}
-                                  className="px-2 py-1 text-sm hover:bg-gray-100"
+                                  className="px-2 py-1 text-sm hover:bg-tawang-beige"
                                   aria-label={`Decrease quantity for ${product.name}`}
                                 >
                                   -
@@ -1047,7 +920,7 @@ export function HomePage() {
                                 <button
                                   type="button"
                                   onClick={() => updateSelectedQuantity(product.id, selectedQty + 1)}
-                                  className="px-2 py-1 text-sm hover:bg-gray-100"
+                                  className="px-2 py-1 text-sm hover:bg-tawang-beige"
                                   aria-label={`Increase quantity for ${product.name}`}
                                 >
                                   +
@@ -1058,7 +931,7 @@ export function HomePage() {
                             <button
                               type="button"
                               onClick={() => handleAddToCart(product.id)}
-                              className="mt-3 w-full px-3 py-2 text-xs sm:text-sm bg-green-600 text-yellow-100 rounded-lg hover:bg-green-500 transition-colors"
+                              className="mt-3 w-full px-3 py-2 text-xs sm:text-sm bg-tawang-gold text-white/90 rounded-lg hover:bg-tawang-gold transition-colors"
                             >
                               Add to Cart
                             </button>
@@ -1069,7 +942,7 @@ export function HomePage() {
                   </div>
                 )}
                 {tertiaryRowProducts.length > 0 && (
-                  <div className="overflow-x-auto no-scrollbar mt-3">
+                  <div className="scroll-row-x no-scrollbar mt-3">
                     <div className="flex w-max gap-3 sm:gap-4">
                       {tertiaryRowProducts.map((product, index) => {
                         const mrp = Math.round(product.price * 1.15);
@@ -1079,13 +952,14 @@ export function HomePage() {
                         return (
                           <div
                             key={`${group.id}-extra2-${product.id}-${index}`}
-                            className="min-w-[180px] sm:min-w-[200px] md:min-w-[220px] bg-white border border-rose-100 rounded-xl p-2.5 sm:p-3 shadow-sm"
+                            className="min-w-[180px] sm:min-w-[200px] md:min-w-[220px] bg-white border border-tawang-gold/15 tawang-card rounded-xl p-2.5 sm:p-3 shadow-sm"
                           >
                             <Link to={`/product/${product.id}`} onClick={() => trackProductView(product.id)} className="block">
-                              <img
+                              <ProductImage
+                                size="md"
                                 src={product.image}
                                 alt={product.name}
-                                className="w-full h-28 sm:h-32 md:h-36 object-cover rounded-lg mb-2"
+                                containerClassName="rounded-lg mb-2"
                               />
                               <p className="text-xs sm:text-sm font-semibold text-gray-900 line-clamp-2 min-h-[2.2rem]">
                                 {product.name}
@@ -1093,18 +967,18 @@ export function HomePage() {
                             </Link>
 
                             <div className="mt-2 flex items-center gap-2">
-                              <p className="text-sm sm:text-base font-bold text-green-700">₹{product.price}</p>
-                              <p className="text-xs text-gray-400 line-through">₹{mrp}</p>
+                              <p className="text-sm sm:text-base font-bold text-tawang-gold">â‚¹{product.price}</p>
+                              <p className="text-xs text-gray-400 line-through">â‚¹{mrp}</p>
                               <span className="text-[10px] sm:text-xs text-emerald-700 font-semibold">{discountPercent}% OFF</span>
                             </div>
 
                             <div className="mt-2 flex items-center justify-between">
-                              <p className="text-xs sm:text-sm text-gray-600">⭐ {product.rating.toFixed(1)}</p>
+                              <p className="text-xs sm:text-sm text-gray-600">â­ {product.rating.toFixed(1)}</p>
                               <div className="inline-flex items-center border rounded-md overflow-hidden">
                                 <button
                                   type="button"
                                   onClick={() => updateSelectedQuantity(product.id, selectedQty - 1)}
-                                  className="px-2 py-1 text-sm hover:bg-gray-100"
+                                  className="px-2 py-1 text-sm hover:bg-tawang-beige"
                                   aria-label={`Decrease quantity for ${product.name}`}
                                 >
                                   -
@@ -1113,7 +987,7 @@ export function HomePage() {
                                 <button
                                   type="button"
                                   onClick={() => updateSelectedQuantity(product.id, selectedQty + 1)}
-                                  className="px-2 py-1 text-sm hover:bg-gray-100"
+                                  className="px-2 py-1 text-sm hover:bg-tawang-beige"
                                   aria-label={`Increase quantity for ${product.name}`}
                                 >
                                   +
@@ -1124,7 +998,7 @@ export function HomePage() {
                             <button
                               type="button"
                               onClick={() => handleAddToCart(product.id)}
-                              className="mt-3 w-full px-3 py-2 text-xs sm:text-sm bg-green-600 text-yellow-100 rounded-lg hover:bg-green-500 transition-colors"
+                              className="mt-3 w-full px-3 py-2 text-xs sm:text-sm bg-tawang-gold text-white/90 rounded-lg hover:bg-tawang-gold transition-colors"
                             >
                               Add to Cart
                             </button>
@@ -1135,7 +1009,7 @@ export function HomePage() {
                   </div>
                 )}
                 {quaternaryRowProducts.length > 0 && (
-                  <div className="overflow-x-auto no-scrollbar mt-3">
+                  <div className="scroll-row-x no-scrollbar mt-3">
                     <div className="flex w-max gap-3 sm:gap-4">
                       {quaternaryRowProducts.map((product, index) => {
                         const mrp = Math.round(product.price * 1.15);
@@ -1145,13 +1019,14 @@ export function HomePage() {
                         return (
                           <div
                             key={`${group.id}-extra3-${product.id}-${index}`}
-                            className="min-w-[180px] sm:min-w-[200px] md:min-w-[220px] bg-white border border-rose-100 rounded-xl p-2.5 sm:p-3 shadow-sm"
+                            className="min-w-[180px] sm:min-w-[200px] md:min-w-[220px] bg-white border border-tawang-gold/15 tawang-card rounded-xl p-2.5 sm:p-3 shadow-sm"
                           >
                             <Link to={`/product/${product.id}`} onClick={() => trackProductView(product.id)} className="block">
-                              <img
+                              <ProductImage
+                                size="md"
                                 src={product.image}
                                 alt={product.name}
-                                className="w-full h-28 sm:h-32 md:h-36 object-cover rounded-lg mb-2"
+                                containerClassName="rounded-lg mb-2"
                               />
                               <p className="text-xs sm:text-sm font-semibold text-gray-900 line-clamp-2 min-h-[2.2rem]">
                                 {product.name}
@@ -1159,18 +1034,18 @@ export function HomePage() {
                             </Link>
 
                             <div className="mt-2 flex items-center gap-2">
-                              <p className="text-sm sm:text-base font-bold text-green-700">₹{product.price}</p>
-                              <p className="text-xs text-gray-400 line-through">₹{mrp}</p>
+                              <p className="text-sm sm:text-base font-bold text-tawang-gold">â‚¹{product.price}</p>
+                              <p className="text-xs text-gray-400 line-through">â‚¹{mrp}</p>
                               <span className="text-[10px] sm:text-xs text-emerald-700 font-semibold">{discountPercent}% OFF</span>
                             </div>
 
                             <div className="mt-2 flex items-center justify-between">
-                              <p className="text-xs sm:text-sm text-gray-600">⭐ {product.rating.toFixed(1)}</p>
+                              <p className="text-xs sm:text-sm text-gray-600">â­ {product.rating.toFixed(1)}</p>
                               <div className="inline-flex items-center border rounded-md overflow-hidden">
                                 <button
                                   type="button"
                                   onClick={() => updateSelectedQuantity(product.id, selectedQty - 1)}
-                                  className="px-2 py-1 text-sm hover:bg-gray-100"
+                                  className="px-2 py-1 text-sm hover:bg-tawang-beige"
                                   aria-label={`Decrease quantity for ${product.name}`}
                                 >
                                   -
@@ -1179,7 +1054,7 @@ export function HomePage() {
                                 <button
                                   type="button"
                                   onClick={() => updateSelectedQuantity(product.id, selectedQty + 1)}
-                                  className="px-2 py-1 text-sm hover:bg-gray-100"
+                                  className="px-2 py-1 text-sm hover:bg-tawang-beige"
                                   aria-label={`Increase quantity for ${product.name}`}
                                 >
                                   +
@@ -1190,7 +1065,7 @@ export function HomePage() {
                             <button
                               type="button"
                               onClick={() => handleAddToCart(product.id)}
-                              className="mt-3 w-full px-3 py-2 text-xs sm:text-sm bg-green-600 text-yellow-100 rounded-lg hover:bg-green-500 transition-colors"
+                              className="mt-3 w-full px-3 py-2 text-xs sm:text-sm bg-tawang-gold text-white/90 rounded-lg hover:bg-tawang-gold transition-colors"
                             >
                               Add to Cart
                             </button>
@@ -1207,47 +1082,47 @@ export function HomePage() {
       </div>
 
 
-      <div className="bg-yellow-50/40 py-6 sm:py-8 md:py-12">
+      <div className="bg-tawang-cream py-6 sm:py-8 md:py-12">
         <div className="max-w-7xl mx-auto px-3 sm:px-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 text-center">
             <div className="p-4 md:p-6">
-              <div className="w-12 h-12 md:w-14 md:h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2 md:mb-3">
-                <BadgeCheck className="w-6 h-6 text-green-700" />
+              <div className="w-12 h-12 md:w-14 md:h-14 bg-tawang-beige rounded-full flex items-center justify-center mx-auto mb-2 md:mb-3">
+                <BadgeCheck className="w-6 h-6 text-tawang-gold" />
               </div>
-              <h3 className="text-sm md:text-lg mb-1">Fresh Products</h3>
+              <h3 className="font-heading text-sm md:text-lg mb-1">Fresh Products</h3>
               <p className="text-xs md:text-sm text-gray-600">Handpicked and quality checked daily.</p>
             </div>
             <div className="p-4 md:p-6">
               <div className="w-12 h-12 md:w-14 md:h-14 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2 md:mb-3">
                 <Truck className="w-6 h-6 text-blue-700" />
               </div>
-              <h3 className="text-sm md:text-lg mb-1">Fast Delivery</h3>
+              <h3 className="font-heading text-sm md:text-lg mb-1">Fast Delivery</h3>
               <p className="text-xs md:text-sm text-gray-600">Quick dispatch inside your local zone.</p>
             </div>
             <div className="p-4 md:p-6">
               <div className="w-12 h-12 md:w-14 md:h-14 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-2 md:mb-3">
                 <ShoppingBag className="w-6 h-6 text-purple-700" />
               </div>
-              <h3 className="text-sm md:text-lg mb-1">Easy Returns</h3>
+              <h3 className="font-heading text-sm md:text-lg mb-1">Easy Returns</h3>
               <p className="text-xs md:text-sm text-gray-600">Simple return flow on eligible products.</p>
             </div>
             <div className="p-4 md:p-6">
               <div className="w-12 h-12 md:w-14 md:h-14 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-2 md:mb-3">
                 <ShieldCheck className="w-6 h-6 text-emerald-700" />
               </div>
-              <h3 className="text-sm md:text-lg mb-1">Secure Payment</h3>
+              <h3 className="font-heading text-sm md:text-lg mb-1">Secure Payment</h3>
               <p className="text-xs md:text-sm text-gray-600">Protected checkout and trusted handling.</p>
             </div>
           </div>
         </div>
       </div>
 
-      <div id="testimonials" className="max-w-7xl mx-auto px-3 sm:px-4 pb-8">
+      <div id="testimonials" className="max-w-7xl mx-auto px-3 sm:px-4 pb-2 sm:pb-4">
         <div className="bg-white rounded-xl border p-4 sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-            <h3 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">Customer Love</h3>
-            <div className="inline-flex items-center gap-1.5 bg-yellow-50 px-3 py-1.5 rounded-full">
-              <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+            <SectionHeading as="h3" title="Customer Love" />
+            <div className="inline-flex items-center gap-1.5 bg-tawang-cream px-3 py-1.5 rounded-full">
+              <Star className="w-4 h-4 text-tawang-gold fill-tawang-gold" />
               <span className="text-sm font-semibold text-gray-800">{averageRating.toFixed(1)} / 5 average rating</span>
             </div>
           </div>

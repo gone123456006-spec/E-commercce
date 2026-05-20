@@ -21,8 +21,11 @@ export default defineConfig({
     },
   },
 
-  // Proxy API requests to backend server
+  // Listen on all network interfaces so phones on same Wi‑Fi can open http://<your-ip>:5173
   server: {
+    host: true,
+    port: 5173,
+    strictPort: true,
     proxy: {
       '/api': {
         target: 'http://localhost:5000',

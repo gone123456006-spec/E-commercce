@@ -48,6 +48,10 @@ const productSchema = new mongoose.Schema({
         type: Boolean,
         default: true
     },
+    visibleAt: {
+        type: Date,
+        default: null
+    },
     quantitySold: {
         type: Number,
         default: 0

@@ -20,7 +20,7 @@ const statusLabelMap: Record<Order['status'], string> = {
 const statusQuickFilters: { value: 'all' | Order['status']; label: string; badge: string; color: string }[] = [
   { value: 'all', label: 'All Orders', badge: '⚪', color: 'text-gray-700' },
   { value: 'pending', label: 'Pending Orders', badge: '🟡', color: 'text-amber-700' },
-  { value: 'accepted', label: 'Accepted Orders', badge: '🟢', color: 'text-green-700' },
+  { value: 'accepted', label: 'Accepted Orders', badge: '🟢', color: 'text-tawang-gold' },
   { value: 'out_for_delivery', label: 'Out for Delivery', badge: '🔵', color: 'text-blue-700' },
   { value: 'delivered', label: 'Delivered Orders', badge: '🟣', color: 'text-purple-700' },
   { value: 'cancelled', label: 'Cancelled Orders', badge: '🔴', color: 'text-red-700' }
@@ -360,7 +360,7 @@ export function Orders() {
           </div>
           <div>
             <p className="text-xs text-gray-500">Amount</p>
-            <p className="text-green-700 font-semibold">₹{order.total}</p>
+            <p className="text-tawang-gold font-semibold">₹{order.total}</p>
           </div>
           <div>
             <p className="text-xs text-gray-500">Payment</p>
@@ -393,13 +393,13 @@ export function Orders() {
   const showCancelledSection = statusFilter === 'all' || statusFilter === 'cancelled';
 
   return (
-    <div className="min-h-screen bg-yellow-50/40">
+    <div className="min-h-screen max-w-full overflow-x-hidden bg-tawang-cream">
       <div className="w-full px-2 md:px-4 py-4 md:py-8">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
           <h1 className="text-2xl md:text-4xl">Order Dashboard</h1>
           <button
             onClick={exportCsv}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-yellow-100 rounded-lg hover:bg-green-500 transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-tawang-gold text-white/90 rounded-lg hover:bg-tawang-gold transition-colors"
           >
             <Download className="w-4 h-4" />
             Export CSV
@@ -411,14 +411,14 @@ export function Orders() {
           <div className="bg-white rounded-lg p-3 shadow"><p className="text-xs text-gray-500">Pending</p><p className="text-xl text-amber-700">{summary.pendingOrders}</p></div>
           <div className="bg-white rounded-lg p-3 shadow"><p className="text-xs text-gray-500">Accepted</p><p className="text-xl text-blue-700">{summary.acceptedOrders}</p></div>
           <div className="bg-white rounded-lg p-3 shadow"><p className="text-xs text-gray-500">Out for Delivery</p><p className="text-xl text-indigo-700">{summary.outForDelivery}</p></div>
-          <div className="bg-white rounded-lg p-3 shadow"><p className="text-xs text-gray-500">Delivered</p><p className="text-xl text-green-700">{summary.deliveredOrders}</p></div>
+          <div className="bg-white rounded-lg p-3 shadow"><p className="text-xs text-gray-500">Delivered</p><p className="text-xl text-tawang-gold">{summary.deliveredOrders}</p></div>
           <div className="bg-white rounded-lg p-3 shadow"><p className="text-xs text-gray-500">Cancelled</p><p className="text-xl text-red-700">{summary.cancelledOrders}</p></div>
-          <div className="bg-white rounded-lg p-3 shadow"><p className="text-xs text-gray-500">Revenue</p><p className="text-xl text-green-700">₹{summary.totalRevenue}</p></div>
+          <div className="bg-white rounded-lg p-3 shadow"><p className="text-xs text-gray-500">Revenue</p><p className="text-xl text-tawang-gold">₹{summary.totalRevenue}</p></div>
           <div className="bg-white rounded-lg p-3 shadow"><p className="text-xs text-gray-500">Today's Orders</p><p className="text-xl">{summary.todaysOrders}</p></div>
         </div>
 
         <div className="bg-white rounded-xl shadow-md p-4 md:p-6 mb-6">
-          <h2 className="text-lg md:text-2xl mb-4 inline-flex items-center gap-2"><Search className="w-5 h-5" /> Filters & Search</h2>
+          <h2 className="font-heading text-lg md:text-2xl mb-4 inline-flex items-center gap-2"><Search className="w-5 h-5" /> Filters & Search</h2>
           <div className="mb-3 flex flex-wrap gap-2">
             {statusQuickFilters.map((item) => (
               <button
@@ -427,8 +427,8 @@ export function Orders() {
                 onClick={() => setStatusFilter(item.value)}
                 className={`px-3 py-1.5 rounded-full text-xs md:text-sm border transition-colors ${
                   statusFilter === item.value
-                    ? 'bg-green-600 text-yellow-100 border-green-600'
-                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                    ? 'bg-tawang-gold text-white/90 border-tawang-gold'
+                    : 'bg-white text-gray-700 border-gray-300 hover:bg-tawang-beige'
                 }`}
               >
                 <span className="mr-1">{item.badge}</span>
@@ -472,13 +472,13 @@ export function Orders() {
         </div>
 
         <div className="bg-white rounded-xl shadow-md p-4 md:p-6 mb-6">
-          <h2 className="text-lg md:text-2xl mb-4 inline-flex items-center gap-2"><BarChart3 className="w-5 h-5" /> Monthly Orders & Revenue</h2>
+          <h2 className="font-heading text-lg md:text-2xl mb-4 inline-flex items-center gap-2"><BarChart3 className="w-5 h-5" /> Monthly Orders & Revenue</h2>
           <div className="grid grid-cols-6 gap-3 items-end h-52">
             {monthlyData.map((m) => (
               <div key={m.label} className="text-center">
                 <div className="h-40 flex items-end justify-center">
                   <div
-                    className="w-8 md:w-12 bg-green-500 rounded-t"
+                    className="w-8 md:w-12 bg-tawang-gold rounded-t"
                     style={{ height: `${Math.max(10, (m.orders / maxOrdersInMonth) * 100)}%` }}
                     title={`${m.orders} orders | ₹${m.revenue}`}
                   />
@@ -493,40 +493,40 @@ export function Orders() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div className="bg-white rounded-xl p-4 shadow">
-            <h3 className="font-semibold mb-1">Delivery Performance</h3>
+            <h3 className="font-heading font-semibold mb-1">Delivery Performance</h3>
             <p className="text-sm text-gray-600">Average delivery time</p>
             <p className="text-xl text-indigo-700">{avgDeliveryMinutes !== null ? `${avgDeliveryMinutes} mins` : 'No delivered orders yet'}</p>
           </div>
           <div className="bg-white rounded-xl p-4 shadow">
-            <h3 className="font-semibold mb-1 inline-flex items-center gap-1"><Bell className="w-4 h-4" /> Real-time Notifications</h3>
+            <h3 className="font-heading font-semibold mb-1 inline-flex items-center gap-1"><Bell className="w-4 h-4" /> Real-time Notifications</h3>
             <p className="text-sm text-gray-600">New order alerts are enabled via local event listener.</p>
           </div>
           <div className="bg-white rounded-xl p-4 shadow">
-            <h3 className="font-semibold mb-1">Customer Alerts</h3>
+            <h3 className="font-heading font-semibold mb-1">Customer Alerts</h3>
             <p className="text-sm text-gray-600">Email/SMS notifications are simulated via in-app toasts.</p>
           </div>
         </div>
 
         <div className="space-y-6">
           {showPendingSection && <section className="bg-white rounded-xl shadow-md p-4 md:p-6">
-            <h2 className="text-lg md:text-2xl mb-3">🟡 Pending Orders ({pendingOrders.length})</h2>
+            <h2 className="font-heading text-lg md:text-2xl mb-3">🟡 Pending Orders ({pendingOrders.length})</h2>
             {pendingOrders.length === 0 && <p className="text-gray-500">No pending orders.</p>}
             <div className="space-y-3">
               {pendingOrders.map((order) => (
                 <div
                   key={order.id}
-                  className={`rounded-lg transition-all duration-500 ${newOrderId === order.id ? 'ring-2 ring-green-500 bg-green-50/50 animate-pulse' : ''
+                  className={`rounded-lg transition-all duration-500 ${newOrderId === order.id ? 'ring-2 ring-tawang-gold bg-tawang-beige/50 animate-pulse' : ''
                     }`}
                   style={newOrderId === order.id ? { animationDuration: '1.5s' } : undefined}
                 >
                   {newOrderId === order.id && (
-                    <div className="text-sm font-semibold text-green-600 mb-2 flex items-center gap-1">
-                      <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-ping" /> It&apos;s Done! New order
+                    <div className="text-sm font-semibold text-tawang-gold mb-2 flex items-center gap-1">
+                      <span className="inline-block w-2 h-2 rounded-full bg-tawang-gold animate-ping" /> It&apos;s Done! New order
                     </div>
                   )}
                   {renderOrderRow(order)}
                   <div className="flex flex-wrap gap-2 mt-2">
-                    <button onClick={() => { updateOrderStatus(order.id, 'accepted'); toast.success('Order accepted'); }} className="px-3 py-1.5 text-sm bg-green-600 text-white rounded">Accept</button>
+                    <button onClick={() => { updateOrderStatus(order.id, 'accepted'); toast.success('Order accepted'); }} className="px-3 py-1.5 text-sm bg-tawang-gold text-tawang-navy rounded">Accept</button>
                     <button onClick={() => { cancelOrder(order.id, 'Rejected by admin'); toast.info('Order rejected'); }} className="px-3 py-1.5 text-sm bg-red-600 text-white rounded">Reject</button>
                   </div>
                 </div>
@@ -535,7 +535,7 @@ export function Orders() {
           </section>}
 
           {showAcceptedSection && <section className="bg-white rounded-xl shadow-md p-4 md:p-6">
-            <h2 className="text-lg md:text-2xl mb-3">🟢 Accepted Orders ({acceptedOrders.length})</h2>
+            <h2 className="font-heading text-lg md:text-2xl mb-3">🟢 Accepted Orders ({acceptedOrders.length})</h2>
             {acceptedOrders.length === 0 && <p className="text-gray-500">No accepted orders.</p>}
             <div className="space-y-3">
               {acceptedOrders.map((order) => (
@@ -551,7 +551,7 @@ export function Orders() {
           </section>}
 
           {showOutForDeliverySection && <section className="bg-white rounded-xl shadow-md p-4 md:p-6">
-            <h2 className="text-lg md:text-2xl mb-3">🔵 Out for Delivery ({outForDeliveryOrders.length})</h2>
+            <h2 className="font-heading text-lg md:text-2xl mb-3">🔵 Out for Delivery ({outForDeliveryOrders.length})</h2>
             {outForDeliveryOrders.length === 0 && <p className="text-gray-500">No orders out for delivery.</p>}
             <div className="space-y-3">
               {outForDeliveryOrders.map((order) => (
@@ -561,7 +561,7 @@ export function Orders() {
                     <strong>Agent:</strong> {order.deliveryAgentName} ({order.deliveryAgentPhone}) | <strong>ETA:</strong> 15 - 30 minutes
                   </p>
                   <div className="flex flex-wrap gap-2 mt-2">
-                    <button onClick={() => { updateOrderStatus(order.id, 'delivered'); toast.success('Marked delivered'); }} className="px-3 py-1.5 text-sm bg-green-700 text-white rounded">Mark as Delivered</button>
+                    <button onClick={() => { updateOrderStatus(order.id, 'delivered'); toast.success('Marked delivered'); }} className="px-3 py-1.5 text-sm bg-tawang-navy text-white rounded">Mark as Delivered</button>
                   </div>
                 </div>
               ))}
@@ -569,7 +569,7 @@ export function Orders() {
           </section>}
 
           {showDeliveredSection && <section className="bg-white rounded-xl shadow-md p-4 md:p-6">
-            <h2 className="text-lg md:text-2xl mb-3">🟣 Delivered Orders ({deliveredOrders.length})</h2>
+            <h2 className="font-heading text-lg md:text-2xl mb-3">🟣 Delivered Orders ({deliveredOrders.length})</h2>
             {deliveredOrders.length === 0 && <p className="text-gray-500">No delivered orders.</p>}
             <div className="space-y-3">
               {deliveredOrders.map((order) => (
@@ -592,7 +592,7 @@ export function Orders() {
           </section>}
 
           {showCancelledSection && <section className="bg-white rounded-xl shadow-md p-4 md:p-6">
-            <h2 className="text-lg md:text-2xl mb-3">🔴 Cancelled Orders ({cancelledOrders.length})</h2>
+            <h2 className="font-heading text-lg md:text-2xl mb-3">🔴 Cancelled Orders ({cancelledOrders.length})</h2>
             {cancelledOrders.length === 0 && <p className="text-gray-500">No cancelled orders.</p>}
             <div className="space-y-3">
               {cancelledOrders.map((order) => (
@@ -611,7 +611,7 @@ export function Orders() {
           <div className="text-center py-12">
             <Package className="w-16 h-16 text-gray-300 mx-auto mb-3" />
             <p className="text-gray-600">No orders yet. Place first order from checkout.</p>
-            <Link to="/" className="inline-block mt-4 px-4 py-2 bg-green-600 text-yellow-100 rounded-lg">Start Shopping</Link>
+            <Link to="/" className="inline-block mt-4 px-4 py-2 bg-tawang-gold text-white/90 rounded-lg">Start Shopping</Link>
           </div>
         )}
       </div>

@@ -1,9 +1,31 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 import { Orders } from './Orders';
 import { getOrders } from '../utils/storage';
 import { getProductById, getProducts } from '../data/products';
+import {
+  createApiProduct,
+  deleteApiProduct,
+  fetchApiProducts,
+  scheduleVisibilityRefresh,
+  updateApiProduct
+} from '../services/productService';
+import { apiUrl } from '../lib/api';
+import {
+  getCategoryThumbnailOverrides,
+  getDefaultCategoryImage,
+  HOMEPAGE_CATEGORY_SECTIONS_FOR_ADMIN,
+  type CategoryThumbnailOverrides
+} from '../data/homepageCategories';
+import {
+  hydrateSiteContentFromServer,
+  persistAndSyncSiteContent,
+  readSiteContentFromClient,
+  type FlashDealCardConfig,
+  type HomeBanner,
+} from '../services/siteContentService';
 
-type DashboardMode = 'orders' | 'group-cards' | 'homepage-banners' | 'flash-deals';
+type DashboardMode = 'orders' | 'group-cards' | 'homepage-banners' | 'flash-deals' | 'category-thumbnails';
 
 const groupLabelByCategory: Record<string, string> = {
   'chips-namkeen': 'Snacks & Drinks',
@@ -66,24 +88,14 @@ interface GroupProductCard {
   revenue: number;
 }
 
-const ADMIN_CARD_EDITS_KEY = 'admin_dashboard_card_edits';
-const ADMIN_CUSTOM_CARDS_KEY = 'admin_dashboard_custom_cards';
-const ADMIN_DELETED_CARDS_KEY = 'admin_dashboard_deleted_cards';
-const ADMIN_HOMEPAGE_BANNERS_KEY = 'admin_homepage_banners';
-const ADMIN_FLASH_DEALS_KEY = 'admin_homepage_flash_deals';
 const ADMIN_DASHBOARD_AUTH_KEY = 'admin_dashboard_authenticated';
 // Removing hardcoded password, fetching from backend instead
 
-interface FlashDealCardConfig {
-  productId: string;
-  badgeText: string;
-}
-
-interface HomeBanner {
-  id: number;
-  src: string;
-  link: string;
-}
+const warnIfSiteSyncFailed = (saved: boolean) => {
+  if (!saved) {
+    toast.message('Saved on this device only — start the API server so all visitors see your changes.');
+  }
+};
 
 const defaultHomeBanners: HomeBanner[] = [
   { id: 1, src: '/assets/images/Banner 1 .png', link: '/' },
@@ -105,82 +117,62 @@ export function AdminOrderDashboard() {
       return false;
     }
   });
-  const [cardEdits, setCardEdits] = useState<Record<string, Partial<GroupProductCard>>>(() => {
-    try {
-      const raw = localStorage.getItem(ADMIN_CARD_EDITS_KEY);
-      return raw ? JSON.parse(raw) : {};
-    } catch {
-      return {};
-    }
-  });
+  const [cardEdits, setCardEdits] = useState<Record<string, Partial<GroupProductCard>>>(
+    () => readSiteContentFromClient().productCardEdits as Record<string, Partial<GroupProductCard>>
+  );
   const [editingCardId, setEditingCardId] = useState<string | null>(null);
   const [draftEdit, setDraftEdit] = useState<Partial<GroupProductCard>>({});
+  const [catalogSyncVersion, setCatalogSyncVersion] = useState(0);
+  const [isSavingProduct, setIsSavingProduct] = useState(false);
+
+  useEffect(() => {
+    const onProductsUpdated = () => setCatalogSyncVersion((v) => v + 1);
+    window.addEventListener('productsUpdated', onProductsUpdated);
+    return () => window.removeEventListener('productsUpdated', onProductsUpdated);
+  }, []);
+
+  useEffect(() => {
+    const syncAdminStateFromClient = () => {
+      const content = readSiteContentFromClient();
+      setCardEdits(content.productCardEdits as Record<string, Partial<GroupProductCard>>);
+      setCustomCards(content.customCards as GroupProductCard[]);
+      setDeletedCardIds(content.deletedProductIds);
+      setHomeBanners(content.homepageBanners.length ? content.homepageBanners : defaultHomeBanners);
+      setFlashDealCards(content.flashDeals.cards);
+      setFlashDealEndAt(content.flashDeals.endAt);
+      setCategoryThumbnailOverrides(content.categoryThumbnails);
+    };
+    void hydrateSiteContentFromServer().then(syncAdminStateFromClient);
+    window.addEventListener('productsUpdated', syncAdminStateFromClient);
+    return () => window.removeEventListener('productsUpdated', syncAdminStateFromClient);
+  }, []);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [customCards, setCustomCards] = useState<GroupProductCard[]>(() => {
-    try {
-      const raw = localStorage.getItem(ADMIN_CUSTOM_CARDS_KEY);
-      return raw ? JSON.parse(raw) : [];
-    } catch {
-      return [];
-    }
-  });
-  const [deletedCardIds, setDeletedCardIds] = useState<string[]>(() => {
-    try {
-      const raw = localStorage.getItem(ADMIN_DELETED_CARDS_KEY);
-      const parsed = raw ? JSON.parse(raw) : [];
-      return Array.isArray(parsed) ? parsed.filter((id) => typeof id === 'string') : [];
-    } catch {
-      return [];
-    }
-  });
+  const [customCards, setCustomCards] = useState<GroupProductCard[]>(
+    () => readSiteContentFromClient().customCards as GroupProductCard[]
+  );
+  const [deletedCardIds, setDeletedCardIds] = useState<string[]>(
+    () => readSiteContentFromClient().deletedProductIds
+  );
   const [homeBanners, setHomeBanners] = useState<HomeBanner[]>(() => {
-    try {
-      const raw = localStorage.getItem(ADMIN_HOMEPAGE_BANNERS_KEY);
-      const parsed = raw ? JSON.parse(raw) : [];
-      if (!Array.isArray(parsed) || parsed.length === 0) return defaultHomeBanners;
-      return parsed
-        .filter((item) => item && typeof item === 'object')
-        .map((item, idx) => ({
-          id: typeof item.id === 'number' ? item.id : Date.now() + idx,
-          src: typeof item.src === 'string' ? item.src : '',
-          link: typeof item.link === 'string' && item.link.trim() ? item.link : '/'
-        }))
-        .filter((banner) => banner.src.trim());
-    } catch {
-      return defaultHomeBanners;
-    }
+    const remote = readSiteContentFromClient().homepageBanners;
+    return remote.length ? remote : defaultHomeBanners;
   });
   const [newBannerSrc, setNewBannerSrc] = useState('');
   const [newBannerLink, setNewBannerLink] = useState('/');
-  const [flashDealCards, setFlashDealCards] = useState<FlashDealCardConfig[]>(() => {
-    try {
-      const raw = localStorage.getItem(ADMIN_FLASH_DEALS_KEY);
-      const parsed = raw ? JSON.parse(raw) : {};
-      const cards = Array.isArray(parsed?.cards) ? parsed.cards : [];
-      return cards
-        .filter((c: any) => c && typeof c.productId === 'string')
-        .map((c: any) => ({
-          productId: String(c.productId),
-          badgeText: typeof c.badgeText === 'string' && c.badgeText.trim() ? c.badgeText : 'Low Stock'
-        }));
-    } catch {
-      return [];
-    }
-  });
-  const [flashDealEndAt, setFlashDealEndAt] = useState<string>(() => {
-    try {
-      const raw = localStorage.getItem(ADMIN_FLASH_DEALS_KEY);
-      const parsed = raw ? JSON.parse(raw) : {};
-      return typeof parsed?.endAt === 'string' ? parsed.endAt : '';
-    } catch {
-      return '';
-    }
-  });
+  const [flashDealCards, setFlashDealCards] = useState<FlashDealCardConfig[]>(
+    () => readSiteContentFromClient().flashDeals.cards
+  );
+  const [flashDealEndAt, setFlashDealEndAt] = useState<string>(
+    () => readSiteContentFromClient().flashDeals.endAt
+  );
   const [newFlashDealProductId, setNewFlashDealProductId] = useState('');
   const [newFlashDealBadgeText, setNewFlashDealBadgeText] = useState('Low Stock');
   const [editingFlashDealProductId, setEditingFlashDealProductId] = useState<string | null>(null);
   const [editingFlashDealNextProductId, setEditingFlashDealNextProductId] = useState('');
   const [editingFlashDealBadgeText, setEditingFlashDealBadgeText] = useState('Low Stock');
+  const [categoryThumbnailOverrides, setCategoryThumbnailOverrides] = useState<CategoryThumbnailOverrides>(
+    () => getCategoryThumbnailOverrides()
+  );
   const [groupCardsFilterGroup, setGroupCardsFilterGroup] = useState('all');
   const [groupCardsFilterCategory, setGroupCardsFilterCategory] = useState('all');
   const [groupCardsSearch, setGroupCardsSearch] = useState('');
@@ -278,12 +270,12 @@ export function AdminOrderDashboard() {
       acc[card.group].push(card);
       return acc;
     }, {});
-  }, [cardEdits, customCards, deletedCardIds]);
+  }, [cardEdits, customCards, deletedCardIds, catalogSyncVersion]);
 
   const allProducts = useMemo(
     () =>
       getProducts().sort((a, b) => a.name.localeCompare(b.name)),
-    [cardEdits, customCards, deletedCardIds]
+    [cardEdits, customCards, deletedCardIds, catalogSyncVersion]
   );
 
   const groupCardsCategoryOptions = useMemo(() => {
@@ -331,47 +323,83 @@ export function AdminOrderDashboard() {
     setDraftEdit({});
   };
 
-  const saveEditing = (productId: string) => {
-    const next = { ...cardEdits, [productId]: draftEdit };
-    setCardEdits(next);
-    (window as any).__ADMIN_PRODUCT_OVERRIDES__ = next;
-    try {
-      localStorage.setItem(ADMIN_CARD_EDITS_KEY, JSON.stringify(next));
-    } catch {
-      // Keep runtime override even if localStorage quota is exceeded.
-      // This still reflects changes across website in current session.
+  const saveEditing = async (productId: string) => {
+    const isMongoId = /^[a-f\d]{24}$/i.test(productId);
+    const customIndex = customCards.findIndex((card) => card.productId === productId);
+
+    if (customIndex >= 0) {
+      const updatedCard = {
+        ...customCards[customIndex],
+        ...draftEdit,
+        productId
+      } as GroupProductCard;
+      const nextCustom = [...customCards];
+      nextCustom[customIndex] = updatedCard;
+      persistCustomCards(nextCustom);
+
+      if (isMongoId) {
+        await updateApiProduct(productId, {
+          name: updatedCard.name,
+          description: updatedCard.description,
+          price: updatedCard.price,
+          category: updatedCard.category,
+          group: updatedCard.group,
+          image: updatedCard.image,
+          stock: updatedCard.stock,
+          unit: updatedCard.unit,
+          unitValue: updatedCard.unitValue
+        });
+        void fetchApiProducts();
+      }
+    } else {
+      const merged = { ...cardEdits[productId], ...draftEdit };
+      const next = { ...cardEdits, [productId]: merged };
+      setCardEdits(next);
+      void persistAndSyncSiteContent({ productCardEdits: next }).then(warnIfSiteSyncFailed);
+
+      if (isMongoId) {
+        const base = getProductById(productId);
+        await updateApiProduct(productId, {
+          name: String(merged.name ?? base?.name ?? ''),
+          description: String(merged.description ?? base?.description ?? ''),
+          price: Number(merged.price ?? base?.price ?? 0),
+          category: String(merged.category ?? base?.category ?? ''),
+          group: String(merged.group ?? groupLabelByCategory[base?.category || ''] ?? ''),
+          image: String(merged.image ?? base?.image ?? ''),
+          stock: Number(merged.stock ?? base?.stock ?? 0),
+          unit: String(merged.unit ?? 'pcs'),
+          unitValue: Number(merged.unitValue ?? 1)
+        });
+        void fetchApiProducts();
+      }
     }
-    window.dispatchEvent(new Event('productsUpdated'));
+
     cancelEditing();
+    toast.success(isMongoId ? 'Product updated for all visitors.' : 'Product card updated for all visitors.');
   };
 
   const persistCustomCards = (next: GroupProductCard[]) => {
     setCustomCards(next);
-    (window as any).__ADMIN_CUSTOM_CARDS__ = next;
-    try {
-      localStorage.setItem(ADMIN_CUSTOM_CARDS_KEY, JSON.stringify(next));
-    } catch {
-      // no-op
-    }
-    window.dispatchEvent(new Event('productsUpdated'));
+    void persistAndSyncSiteContent({ customCards: next }).then(warnIfSiteSyncFailed);
   };
 
   const persistDeletedCardIds = (next: string[]) => {
     setDeletedCardIds(next);
-    (window as any).__ADMIN_DELETED_PRODUCT_IDS__ = next;
-    try {
-      localStorage.setItem(ADMIN_DELETED_CARDS_KEY, JSON.stringify(next));
-    } catch {
-      // no-op
-    }
-    window.dispatchEvent(new Event('productsUpdated'));
+    void persistAndSyncSiteContent({ deletedProductIds: next }).then(warnIfSiteSyncFailed);
   };
 
-  const handleDeleteCard = (card: GroupProductCard) => {
+  const handleDeleteCard = async (card: GroupProductCard) => {
     const confirmed = window.confirm(`Delete "${card.name}" from dashboard and website?`);
     if (!confirmed) return;
 
-    if (card.productId.startsWith('custom_')) {
+    const isMongoId = /^[a-f\d]{24}$/i.test(card.productId);
+
+    if (isMongoId) {
+      await deleteApiProduct(card.productId);
+      const nextCustomCards = customCards.filter((item) => item.productId !== card.productId);
+      persistCustomCards(nextCustomCards);
+      void fetchApiProducts();
+    } else if (card.productId.startsWith('custom_')) {
       const nextCustomCards = customCards.filter((item) => item.productId !== card.productId);
       persistCustomCards(nextCustomCards);
     } else if (!deletedCardIds.includes(card.productId)) {
@@ -382,12 +410,7 @@ export function AdminOrderDashboard() {
       const nextEdits = { ...cardEdits };
       delete nextEdits[card.productId];
       setCardEdits(nextEdits);
-      (window as any).__ADMIN_PRODUCT_OVERRIDES__ = nextEdits;
-      try {
-        localStorage.setItem(ADMIN_CARD_EDITS_KEY, JSON.stringify(nextEdits));
-      } catch {
-        // no-op
-      }
+      void persistAndSyncSiteContent({ productCardEdits: nextEdits }).then(warnIfSiteSyncFailed);
     }
 
     if (editingCardId === card.productId) {
@@ -405,7 +428,7 @@ export function AdminOrderDashboard() {
 
       const img = new Image();
       img.onload = () => {
-        const maxWidth = 640;
+        const maxWidth = 480;
         const scale = Math.min(1, maxWidth / img.width);
         const canvas = document.createElement('canvas');
         canvas.width = Math.max(1, Math.round(img.width * scale));
@@ -416,7 +439,7 @@ export function AdminOrderDashboard() {
           return;
         }
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        const compressed = canvas.toDataURL('image/jpeg', 0.72);
+        const compressed = canvas.toDataURL('image/jpeg', 0.62);
         onReady(compressed);
       };
       img.src = result;
@@ -437,13 +460,7 @@ export function AdminOrderDashboard() {
 
   const persistHomeBanners = (next: HomeBanner[]) => {
     setHomeBanners(next);
-    (window as any).__ADMIN_HOMEPAGE_BANNERS__ = next;
-    try {
-      localStorage.setItem(ADMIN_HOMEPAGE_BANNERS_KEY, JSON.stringify(next));
-    } catch {
-      // no-op
-    }
-    window.dispatchEvent(new Event('productsUpdated'));
+    void persistAndSyncSiteContent({ homepageBanners: next }).then(warnIfSiteSyncFailed);
   };
 
   const handleAddBanner = () => {
@@ -479,17 +496,39 @@ export function AdminOrderDashboard() {
     persistHomeBanners(next.length ? next : defaultHomeBanners);
   };
 
+  const persistCategoryThumbnails = (next: CategoryThumbnailOverrides) => {
+    setCategoryThumbnailOverrides(next);
+    void persistAndSyncSiteContent({ categoryThumbnails: next }).then(warnIfSiteSyncFailed);
+  };
+
+  const handleCategoryThumbnailUrl = (categoryId: string, imageUrl: string) => {
+    const trimmed = imageUrl.trim();
+    if (!trimmed) return;
+    persistCategoryThumbnails({ ...categoryThumbnailOverrides, [categoryId]: trimmed });
+    toast.success('Category thumbnail updated');
+  };
+
+  const handleCategoryThumbnailUpload = (categoryId: string, file: File | null) => {
+    processImageFile(file, (dataUrl) => handleCategoryThumbnailUrl(categoryId, dataUrl));
+  };
+
+  const handleResetCategoryThumbnail = (categoryId: string) => {
+    const next = { ...categoryThumbnailOverrides };
+    delete next[categoryId];
+    persistCategoryThumbnails(next);
+    toast.success('Reset to default thumbnail');
+  };
+
+  const getCategoryThumbnailPreview = (categoryId: string) => {
+    const custom = categoryThumbnailOverrides[categoryId];
+    if (typeof custom === 'string' && custom.trim()) return custom.trim();
+    return getDefaultCategoryImage(categoryId);
+  };
+
   const persistFlashDeals = (cards: FlashDealCardConfig[], endAt: string) => {
     setFlashDealCards(cards);
     setFlashDealEndAt(endAt);
-    const payload = { cards, endAt };
-    (window as any).__ADMIN_FLASH_DEALS__ = payload;
-    try {
-      localStorage.setItem(ADMIN_FLASH_DEALS_KEY, JSON.stringify(payload));
-    } catch {
-      // no-op
-    }
-    window.dispatchEvent(new Event('productsUpdated'));
+    void persistAndSyncSiteContent({ flashDeals: { cards, endAt } }).then(warnIfSiteSyncFailed);
   };
 
   const handleAddFlashDealCard = () => {
@@ -585,8 +624,9 @@ export function AdminOrderDashboard() {
     setAddDraft((prev) => ({ ...prev, [key]: value }));
   };
 
-  const handleAddCardSave = () => {
+  const handleAddCardSave = async () => {
     if (!addDraft.name || !addDraft.group || !addDraft.category) return;
+
     const newCard: GroupProductCard = {
       productId: `custom_${Date.now()}`,
       name: String(addDraft.name),
@@ -602,7 +642,31 @@ export function AdminOrderDashboard() {
       orderCount: Number(addDraft.orderCount || 0),
       revenue: Number(addDraft.revenue || 0)
     };
+
+    setIsSavingProduct(true);
+    const result = await createApiProduct({
+      name: newCard.name,
+      description: newCard.description,
+      price: newCard.price,
+      category: newCard.category,
+      group: newCard.group,
+      image: newCard.image,
+      stock: newCard.stock,
+      unit: newCard.unit,
+      unitValue: newCard.unitValue
+    });
+    setIsSavingProduct(false);
+
+    if (!result.ok) {
+      toast.error(result.error);
+      return;
+    }
+
+    newCard.productId = result.product.id;
     persistCustomCards([newCard, ...customCards]);
+    scheduleVisibilityRefresh();
+    void fetchApiProducts();
+    toast.success('Product saved! It will show on all phones and browsers in about 5 seconds.');
     setShowAddForm(false);
     setAddDraft({
       name: '',
@@ -631,8 +695,7 @@ export function AdminOrderDashboard() {
 
     setIsLoggingIn(true);
     try {
-      const apiUrl = import.meta.env.VITE_API_BASE_URL || 'https://ecommerce-api-6y9p.onrender.com';
-      const response = await fetch(`${apiUrl}/api/auth/admin-login`, {
+      const response = await fetch(apiUrl('/api/auth/admin-login'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password: adminPasswordInput }),
@@ -673,9 +736,9 @@ export function AdminOrderDashboard() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-yellow-50/40 flex items-center justify-center px-3">
+      <div className="min-h-screen max-w-full overflow-x-hidden bg-tawang-cream flex items-center justify-center px-3">
         <section className="w-full max-w-md bg-white rounded-xl shadow-md p-5 md:p-6">
-          <h2 className="text-xl md:text-2xl font-semibold text-gray-900 mb-2">Admin Dashboard Login</h2>
+          <h2 className="font-heading text-xl md:text-2xl font-semibold text-gray-900 mb-2">Admin Dashboard Login</h2>
           <p className="text-sm text-gray-600 mb-4">Enter password to access admin dashboard.</p>
           <form onSubmit={handleAdminLogin} className="space-y-3">
             <input
@@ -689,7 +752,7 @@ export function AdminOrderDashboard() {
               placeholder="Enter admin password"
             />
             {adminPasswordError && <p className="text-sm text-red-600">{adminPasswordError}</p>}
-            <button disabled={isLoggingIn} type="submit" className={`w-full px-4 py-2 ${isLoggingIn ? 'bg-gray-400' : 'bg-green-600 hover:bg-green-500'} text-yellow-100 rounded`}>
+            <button disabled={isLoggingIn} type="submit" className={`w-full px-4 py-2 ${isLoggingIn ? 'bg-gray-400' : 'bg-tawang-gold hover:bg-tawang-gold'} text-white/90 rounded`}>
               {isLoggingIn ? 'Verifying...' : 'Enter Dashboard'}
             </button>
           </form>
@@ -699,7 +762,7 @@ export function AdminOrderDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-yellow-50/40">
+    <div className="min-h-screen max-w-full overflow-x-hidden bg-tawang-cream">
       <div className="w-full px-2 md:px-4 pt-4 md:pt-8">
         <div className="mb-4 md:mb-6 bg-white rounded-xl shadow-sm p-3 md:p-4 flex flex-wrap items-stretch gap-2">
           <div className="w-full flex items-center justify-between gap-3 mb-1">
@@ -714,36 +777,43 @@ export function AdminOrderDashboard() {
           <button
             type="button"
             onClick={() => setMode('orders')}
-            className={`w-full sm:w-auto px-4 py-2 rounded-lg text-sm md:text-base transition-colors ${mode === 'orders' ? 'bg-green-600 text-yellow-100' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+            className={`w-full sm:w-auto px-4 py-2 rounded-lg text-sm md:text-base transition-colors ${mode === 'orders' ? 'bg-tawang-gold text-white/90' : 'bg-tawang-beige text-gray-700 hover:bg-gray-200'}`}
           >
             Orders Section
           </button>
           <button
             type="button"
             onClick={() => setMode('group-cards')}
-            className={`w-full sm:w-auto px-4 py-2 rounded-lg text-sm md:text-base transition-colors ${mode === 'group-cards' ? 'bg-green-600 text-yellow-100' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+            className={`w-full sm:w-auto px-4 py-2 rounded-lg text-sm md:text-base transition-colors ${mode === 'group-cards' ? 'bg-tawang-gold text-white/90' : 'bg-tawang-beige text-gray-700 hover:bg-gray-200'}`}
           >
             Group-wise Product Cards
           </button>
           <button
             type="button"
             onClick={() => setMode('homepage-banners')}
-            className={`w-full sm:w-auto px-4 py-2 rounded-lg text-sm md:text-base transition-colors ${mode === 'homepage-banners' ? 'bg-green-600 text-yellow-100' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+            className={`w-full sm:w-auto px-4 py-2 rounded-lg text-sm md:text-base transition-colors ${mode === 'homepage-banners' ? 'bg-tawang-gold text-white/90' : 'bg-tawang-beige text-gray-700 hover:bg-gray-200'}`}
           >
             Homepage Banners
           </button>
           <button
             type="button"
             onClick={() => setMode('flash-deals')}
-            className={`w-full sm:w-auto px-4 py-2 rounded-lg text-sm md:text-base transition-colors ${mode === 'flash-deals' ? 'bg-green-600 text-yellow-100' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+            className={`w-full sm:w-auto px-4 py-2 rounded-lg text-sm md:text-base transition-colors ${mode === 'flash-deals' ? 'bg-tawang-gold text-white/90' : 'bg-tawang-beige text-gray-700 hover:bg-gray-200'}`}
           >
             Flash Deals Section
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('category-thumbnails')}
+            className={`w-full sm:w-auto px-4 py-2 rounded-lg text-sm md:text-base transition-colors ${mode === 'category-thumbnails' ? 'bg-tawang-gold text-white/90' : 'bg-tawang-beige text-gray-700 hover:bg-gray-200'}`}
+          >
+            Category Thumbnails
           </button>
           {mode === 'group-cards' && (
             <button
               type="button"
               onClick={() => setShowAddForm((v) => !v)}
-              className="w-full sm:w-auto px-4 py-2 rounded-lg text-sm md:text-base bg-blue-600 text-white hover:bg-blue-500 transition-colors"
+              className="w-full sm:w-auto px-4 py-2 rounded-lg text-sm md:text-base bg-tawang-navy text-white hover:bg-tawang-gold transition-colors"
             >
               {showAddForm ? 'Close Add Card' : 'Add Card'}
             </button>
@@ -756,7 +826,7 @@ export function AdminOrderDashboard() {
           <div className="pb-8 md:pb-12 space-y-6">
             {mode === 'homepage-banners' && (
               <section className="bg-white rounded-xl shadow-md p-4 md:p-6">
-                <h2 className="text-lg md:text-xl mb-4">Homepage Banners</h2>
+                <h2 className="font-heading text-lg md:text-xl mb-4">Homepage Banners</h2>
                 <p className="text-xs md:text-sm text-gray-600 mb-4">
                   Add a new banner or replace existing banner image/link. Changes reflect on website homepage banner section.
                 </p>
@@ -779,13 +849,13 @@ export function AdminOrderDashboard() {
                     className="w-full px-3 py-2 border rounded"
                     placeholder="Banner link (example: /category/chips-namkeen)"
                   />
-                  <button type="button" onClick={handleAddBanner} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-500 md:col-span-3">
+                  <button type="button" onClick={handleAddBanner} className="px-4 py-2 bg-tawang-navy text-white rounded hover:bg-tawang-gold md:col-span-3">
                     Add Banner
                   </button>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {homeBanners.map((banner) => (
-                    <div key={banner.id} className="border rounded-lg p-3 bg-gray-50">
+                    <div key={banner.id} className="border rounded-lg p-3 bg-tawang-beige">
                       <img src={banner.src} alt="Homepage banner" className="w-full h-28 object-cover rounded mb-2" />
                       <input
                         value={banner.src}
@@ -817,9 +887,79 @@ export function AdminOrderDashboard() {
                 </div>
               </section>
             )}
+            {mode === 'category-thumbnails' && (
+              <section className="bg-white rounded-xl shadow-md p-3 md:p-4 space-y-5">
+                <div>
+                  <h2 className="font-heading text-base md:text-lg mb-1">Homepage Category Thumbnails</h2>
+                  <p className="text-[11px] md:text-xs text-gray-600">
+                    Upload or paste image URLs for Snacks &amp; Drinks, Grocery &amp; Kitchen, and Beauty &amp;
+                    Personal Care category cards. Changes appear on the homepage immediately.
+                  </p>
+                </div>
+                {HOMEPAGE_CATEGORY_SECTIONS_FOR_ADMIN.map((section) => (
+                  <div key={section.id}>
+                    <h3 className="font-heading text-sm md:text-base mb-2 text-tawang-navy">{section.title}</h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
+                      {section.categories.map((category) => {
+                        const previewSrc = getCategoryThumbnailPreview(category.id);
+                        const hasCustom = Boolean(categoryThumbnailOverrides[category.id]?.trim());
+                        return (
+                          <article
+                            key={category.id}
+                            className="border rounded-md p-2 bg-tawang-beige flex flex-col min-w-0"
+                          >
+                            <img
+                              src={previewSrc}
+                              alt={category.name.replace('\n', ' ')}
+                              className="w-full h-16 sm:h-[4.5rem] object-cover rounded border bg-white mb-1.5"
+                            />
+                            <p className="text-[11px] font-semibold text-gray-900 whitespace-pre-line leading-tight mb-0.5 line-clamp-2">
+                              {category.name}
+                            </p>
+                            <p className="text-[9px] text-gray-500 mb-1 truncate" title={category.id}>
+                              {category.id}
+                            </p>
+                            <input
+                              defaultValue={categoryThumbnailOverrides[category.id] || ''}
+                              key={`${category.id}-${hasCustom ? 'custom' : 'default'}`}
+                              onBlur={(e) => {
+                                const value = e.target.value.trim();
+                                if (value) handleCategoryThumbnailUrl(category.id, value);
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.currentTarget.blur();
+                                }
+                              }}
+                              className="w-full px-1.5 py-1 border rounded text-[10px] mb-1 bg-white"
+                              placeholder="Image URL"
+                            />
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) =>
+                                handleCategoryThumbnailUpload(category.id, e.target.files?.[0] || null)
+                              }
+                              className="w-full text-[10px] mb-1 bg-white file:mr-1 file:py-0.5 file:px-1 file:rounded file:border-0 file:text-[9px] file:bg-tawang-navy file:text-white"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleResetCategoryThumbnail(category.id)}
+                              className="mt-auto w-full px-1.5 py-1 text-[10px] border border-gray-400 text-gray-700 rounded hover:bg-white"
+                            >
+                              Reset
+                            </button>
+                          </article>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </section>
+            )}
             {mode === 'flash-deals' && (
               <section className="bg-white rounded-xl shadow-md p-4 md:p-6">
-                <h2 className="text-lg md:text-xl mb-4">Flash Deals Section</h2>
+                <h2 className="font-heading text-lg md:text-xl mb-4">Flash Deals Section</h2>
                 <p className="text-xs md:text-sm text-gray-600 mb-4">
                   Add or edit flash deal cards and set section end timing for homepage.
                 </p>
@@ -845,7 +985,7 @@ export function AdminOrderDashboard() {
                   <button
                     type="button"
                     onClick={handleAddFlashDealCard}
-                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-500"
+                    className="px-4 py-2 bg-tawang-navy text-white rounded hover:bg-tawang-gold"
                   >
                     Add Flash Card
                   </button>
@@ -866,7 +1006,7 @@ export function AdminOrderDashboard() {
                     {flashDealCards.map((card) => {
                       const product = allProducts.find((p) => p.id === card.productId);
                       return (
-                        <article key={card.productId} className="border rounded-lg p-3 bg-gray-50 flex flex-col">
+                        <article key={card.productId} className="border rounded-lg p-3 bg-tawang-beige flex flex-col">
                           <img
                             src={product?.image || ''}
                             alt={product?.name || card.productId}
@@ -901,14 +1041,14 @@ export function AdminOrderDashboard() {
                                 <button
                                   type="button"
                                   onClick={saveEditFlashDealCard}
-                                  className="px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-500 text-sm"
+                                  className="px-3 py-1.5 bg-tawang-gold text-tawang-navy rounded hover:bg-tawang-gold text-sm"
                                 >
                                   Save
                                 </button>
                                 <button
                                   type="button"
                                   onClick={cancelEditFlashDealCard}
-                                  className="px-3 py-1.5 border rounded hover:bg-gray-100 text-sm"
+                                  className="px-3 py-1.5 border rounded hover:bg-tawang-beige text-sm"
                                 >
                                   Cancel
                                 </button>
@@ -926,7 +1066,7 @@ export function AdminOrderDashboard() {
                                 <button
                                   type="button"
                                   onClick={() => startEditFlashDealCard(card)}
-                                  className="px-3 py-1.5 border border-green-600 text-green-700 rounded hover:bg-green-50 text-sm"
+                                  className="px-3 py-1.5 border border-tawang-gold text-tawang-gold rounded hover:bg-tawang-beige text-sm"
                                 >
                                   Edit
                                 </button>
@@ -949,7 +1089,7 @@ export function AdminOrderDashboard() {
             )}
             {mode === 'group-cards' && showAddForm && (
               <section className="bg-white rounded-xl shadow-md p-4 md:p-6">
-                <h2 className="text-lg md:text-xl mb-4">Add New Card</h2>
+                <h2 className="font-heading text-lg md:text-xl mb-4">Add New Card</h2>
                 <p className="text-xs md:text-sm text-gray-600 mb-4">
                   Fill product details below. This card will be added in the selected group and category section.
                 </p>
@@ -1007,13 +1147,20 @@ export function AdminOrderDashboard() {
                     <label className="text-[11px] md:text-xs font-medium text-gray-700 col-span-2">Revenue (₹)</label>
                     <input type="number" step="0.01" value={String(addDraft.revenue || 0)} onChange={(e) => updateAddDraft('revenue', e.target.value)} className="w-full px-3 py-2 border rounded col-span-2" placeholder="Revenue (₹)" />
                   </div>
-                  <button type="button" onClick={handleAddCardSave} className="px-4 py-2 bg-green-600 text-yellow-100 rounded hover:bg-green-500">Save New Card</button>
+                  <button
+                    type="button"
+                    onClick={handleAddCardSave}
+                    disabled={isSavingProduct}
+                    className="px-4 py-2 bg-tawang-gold text-white/90 rounded hover:bg-tawang-gold disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {isSavingProduct ? 'Saving…' : 'Save New Card'}
+                  </button>
                 </div>
               </section>
             )}
             {mode === 'group-cards' && (
               <section className="bg-white rounded-xl shadow-md p-4 md:p-6">
-                <h2 className="text-lg md:text-xl mb-4">Filter Group-wise Cards</h2>
+                <h2 className="font-heading text-lg md:text-xl mb-4">Filter Group-wise Cards</h2>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                   <select
                     value={groupCardsFilterGroup}
@@ -1066,7 +1213,7 @@ export function AdminOrderDashboard() {
             ) : (
               Object.entries(filteredGroupedCards).map(([groupName, cards]) => (
                 <section key={groupName} className="bg-white rounded-xl shadow-md p-4 md:p-6">
-                  <h2 className="text-lg md:text-2xl mb-4">{groupName}</h2>
+                  <h2 className="font-heading text-lg md:text-2xl mb-4">{groupName}</h2>
                   {Object.entries(
                     cards.reduce<Record<string, GroupProductCard[]>>((acc, card) => {
                       if (!acc[card.category]) acc[card.category] = [];
@@ -1075,18 +1222,18 @@ export function AdminOrderDashboard() {
                     }, {})
                   ).map(([categoryName, categoryCards]) => (
                     <div key={categoryName} className="mb-5 last:mb-0">
-                      <h3 className="text-sm md:text-lg mb-3 capitalize text-gray-800">
+                      <h3 className="font-heading text-sm md:text-lg mb-3 capitalize text-gray-800">
                         {categoryName.replace(/-/g, ' ')}
                       </h3>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         {categoryCards.map((card) => (
-                          <article key={card.productId} className="border rounded-lg p-3 bg-gray-50">
+                          <article key={card.productId} className="border rounded-lg p-3 bg-tawang-beige">
                             <img
                               src={editingCardId === card.productId && draftEdit.image ? String(draftEdit.image) : card.image}
                               alt={card.name}
                               className="w-full h-32 object-cover rounded-md mb-3"
                             />
-                            <h4 className="text-sm md:text-base mb-2 line-clamp-2">{card.name}</h4>
+                            <h4 className="font-heading text-sm md:text-base mb-2 line-clamp-2">{card.name}</h4>
                             <div className="text-xs md:text-sm text-gray-700 space-y-1">
                               <p><strong>Sold Qty:</strong> {card.quantitySold}</p>
                               <p><strong>Order Count:</strong> {card.orderCount}</p>
@@ -1218,14 +1365,14 @@ export function AdminOrderDashboard() {
                                   <button
                                     type="button"
                                     onClick={() => saveEditing(card.productId)}
-                                    className="flex-1 px-2 py-1.5 text-xs md:text-sm bg-green-600 text-yellow-100 rounded hover:bg-green-500"
+                                    className="flex-1 px-2 py-1.5 text-xs md:text-sm bg-tawang-gold text-white/90 rounded hover:bg-tawang-gold"
                                   >
                                     Save
                                   </button>
                                   <button
                                     type="button"
                                     onClick={cancelEditing}
-                                    className="flex-1 px-2 py-1.5 text-xs md:text-sm border rounded hover:bg-gray-100"
+                                    className="flex-1 px-2 py-1.5 text-xs md:text-sm border rounded hover:bg-tawang-beige"
                                   >
                                     Cancel
                                   </button>
@@ -1236,7 +1383,7 @@ export function AdminOrderDashboard() {
                                 <button
                                   type="button"
                                   onClick={() => startEditing(card)}
-                                  className="w-full px-2 py-1.5 text-xs md:text-sm border border-green-600 text-green-700 rounded hover:bg-green-50"
+                                  className="w-full px-2 py-1.5 text-xs md:text-sm border border-tawang-gold text-tawang-gold rounded hover:bg-tawang-beige"
                                 >
                                   Edit Card
                                 </button>

@@ -1,3 +1,5 @@
+import { getApiProductsCache } from '../services/productService';
+
 export interface Product {
   id: string;
   name: string;
@@ -2886,50 +2888,65 @@ export const products: Product[] = [
 
 function getProductOverrides(): Record<string, ProductOverrideShape> {
   if (typeof window === 'undefined') return {};
+  // Lazy import avoided — read via window/localStorage merge in siteContentService pattern
   const runtimeOverrides = (window as any).__ADMIN_PRODUCT_OVERRIDES__;
-  if (runtimeOverrides && typeof runtimeOverrides === 'object') {
-    return runtimeOverrides as Record<string, ProductOverrideShape>;
-  }
+  let fromStorage: Record<string, ProductOverrideShape> = {};
   try {
     const raw = localStorage.getItem(ADMIN_CARD_EDITS_KEY);
-    return raw ? JSON.parse(raw) : {};
+    fromStorage = raw ? JSON.parse(raw) : {};
   } catch {
-    return {};
+    fromStorage = {};
   }
+  const fromRuntime =
+    runtimeOverrides && typeof runtimeOverrides === 'object' ? runtimeOverrides : {};
+  return { ...fromStorage, ...fromRuntime };
 }
 
 function getCustomCards(): AdminCustomCardShape[] {
   if (typeof window === 'undefined') return [];
   const runtimeCards = (window as any).__ADMIN_CUSTOM_CARDS__;
-  if (Array.isArray(runtimeCards)) {
-    return runtimeCards as AdminCustomCardShape[];
-  }
+  let fromStorage: AdminCustomCardShape[] = [];
   try {
     const raw = localStorage.getItem(ADMIN_CUSTOM_CARDS_KEY);
     const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? (parsed as AdminCustomCardShape[]) : [];
+    fromStorage = Array.isArray(parsed) ? (parsed as AdminCustomCardShape[]) : [];
   } catch {
-    return [];
+    fromStorage = [];
   }
+  return Array.isArray(runtimeCards) && runtimeCards.length
+    ? (runtimeCards as AdminCustomCardShape[])
+    : fromStorage;
 }
 
 function getDeletedCardIds(): Set<string> {
   if (typeof window === 'undefined') return new Set();
   const runtimeDeleted = (window as any).__ADMIN_DELETED_PRODUCT_IDS__;
-  if (Array.isArray(runtimeDeleted)) {
-    return new Set(runtimeDeleted.filter((id) => typeof id === 'string' && id.trim()));
-  }
+  let fromStorage: string[] = [];
   try {
     const raw = localStorage.getItem(ADMIN_DELETED_CARDS_KEY);
     const parsed = raw ? JSON.parse(raw) : [];
-    if (!Array.isArray(parsed)) return new Set();
-    return new Set(parsed.filter((id) => typeof id === 'string' && id.trim()));
+    fromStorage = Array.isArray(parsed) ? parsed.filter((id) => typeof id === 'string' && id.trim()) : [];
   } catch {
-    return new Set();
+    fromStorage = [];
   }
+  const ids =
+    Array.isArray(runtimeDeleted) && runtimeDeleted.length ? runtimeDeleted : fromStorage;
+  return new Set(ids.filter((id: unknown) => typeof id === 'string' && id.trim()));
+}
+
+let productsListCache: Product[] | null = null;
+
+function invalidateProductsListCache(): void {
+  productsListCache = null;
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('productsUpdated', invalidateProductsListCache);
 }
 
 export const getProducts = (): Product[] => {
+  if (productsListCache) return productsListCache;
+
   const overrides = getProductOverrides();
   const deletedIds = getDeletedCardIds();
   const baseProducts = products.map((product) => {
@@ -2945,6 +2962,9 @@ export const getProducts = (): Product[] => {
       price: typeof override.price === 'number' && Number.isFinite(override.price) ? override.price : product.price
     };
   });
+
+  const apiProducts = getApiProductsCache().filter((product) => !deletedIds.has(product.id));
+  const apiProductIds = new Set(apiProducts.map((product) => product.id));
 
   const customProducts = getCustomCards()
     .map((card) => {
@@ -2964,9 +2984,15 @@ export const getProducts = (): Product[] => {
       } as Product;
     })
     .filter((item): item is Product => Boolean(item))
-    .filter((product) => !deletedIds.has(product.id));
+    .filter((product) => !deletedIds.has(product.id))
+    .filter((product) => !apiProductIds.has(product.id));
 
-  return [...customProducts, ...baseProducts.filter((product) => !deletedIds.has(product.id))];
+  const mergedBase = baseProducts
+    .filter((product) => !deletedIds.has(product.id))
+    .filter((product) => !apiProductIds.has(product.id));
+
+  productsListCache = [...apiProducts, ...customProducts, ...mergedBase];
+  return productsListCache;
 };
 
 export const getProductById = (id: string): Product | undefined => {

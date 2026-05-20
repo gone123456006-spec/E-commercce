@@ -5,6 +5,8 @@ import { getCart, updateCartItemQuantity, removeFromCart } from '../utils/storag
 import { getProductById } from '../data/products';
 import type { CartItem } from '../utils/storage';
 import { toast } from 'sonner';
+import { PageHeading } from './PageHeading';
+import { ProductImage } from './ProductImage';
 
 import { LoginModal } from './LoginModal';
 import { useAuth } from '../context/AuthContext';
@@ -52,14 +54,14 @@ export function Cart() {
 
   if (cartItems.length === 0) {
     return (
-      <div className="min-h-screen bg-yellow-50/40 flex items-center justify-center">
+      <div className="min-h-screen max-w-full overflow-x-hidden bg-tawang-cream flex items-center justify-center">
         <div className="text-center">
           <ShoppingBag className="w-24 h-24 text-gray-300 mx-auto mb-4" />
-          <h2 className="text-3xl mb-4">Your cart is empty</h2>
+          <h2 className="font-heading text-3xl mb-4">Your cart is empty</h2>
           <p className="text-xl text-gray-600 mb-8">Add some products to get started!</p>
           <Link
             to="/"
-            className="inline-block px-8 py-4 bg-green-600 text-yellow-100 rounded-xl hover:bg-green-500 transition-colors text-lg"
+            className="inline-block px-8 py-4 bg-tawang-gold text-white/90 rounded-xl hover:bg-tawang-gold transition-colors text-lg"
           >
             Continue Shopping
           </Link>
@@ -69,11 +71,11 @@ export function Cart() {
   }
 
   return (
-    <div className="min-h-screen bg-yellow-50/40">
-      <div className="max-w-7xl mx-auto px-4 py-4 md:py-8">
-        <h1 className="text-2xl md:text-4xl mb-4 md:mb-8">Shopping Cart</h1>
+    <div className="min-h-screen max-w-full overflow-x-hidden bg-tawang-cream">
+      <PageHeading title="Shopping Cart" variant="cream" sticky={false} />
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-8">
+      <div className="mx-auto max-w-7xl px-3 py-4 sm:px-4 md:py-8">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 md:gap-8">
           {/* Cart Items */}
           <div className="lg:col-span-2 space-y-4">
             {cartItems.map((item) => {
@@ -84,28 +86,24 @@ export function Cart() {
                 <div key={item.productId} className="bg-white rounded-xl shadow-md p-4 md:p-6">
                   <div className="flex gap-3 md:gap-6">
                     <Link to={`/product/${product.id}`} className="flex-shrink-0">
-                      <img
-                        src={product.image}
-                        alt={product.name}
-                        className="w-20 h-20 md:w-32 md:h-32 object-cover rounded-lg"
-                      />
+                      <ProductImage size="thumb" src={product.image} alt={product.name} containerClassName="rounded-lg" />
                     </Link>
 
                     <div className="flex-1 min-w-0">
                       <Link to={`/product/${product.id}`}>
-                        <h3 className="text-base md:text-2xl mb-1 md:mb-2 hover:text-green-600 transition-colors truncate">
+                        <h3 className="font-heading text-base md:text-2xl mb-1 md:mb-2 hover:text-tawang-gold transition-colors truncate">
                           {product.name}
                         </h3>
                       </Link>
                       <p className="text-xs md:text-base text-gray-600 mb-2 md:mb-4 line-clamp-2">{product.description}</p>
-                      <div className="text-lg md:text-2xl text-green-600 font-semibold mb-3 md:mb-4">₹{product.price}</div>
+                      <div className="text-lg md:text-2xl text-tawang-gold font-semibold mb-3 md:mb-4">₹{product.price}</div>
 
                       <div className="flex items-center justify-between flex-wrap gap-3">
                         <div className="flex items-center gap-2 md:gap-3">
                           <button
                             onClick={() => handleUpdateQuantity(product.id, item.quantity - 1)}
                             disabled={item.quantity <= 1}
-                            className="w-8 h-8 md:w-10 md:h-10 rounded-full border-2 border-gray-300 flex items-center justify-center hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            className="w-8 h-8 md:w-10 md:h-10 rounded-full border-2 border-gray-300 flex items-center justify-center hover:bg-tawang-beige disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                           >
                             <Minus className="w-3 h-3 md:w-4 md:h-4" />
                           </button>
@@ -113,7 +111,7 @@ export function Cart() {
                           <button
                             onClick={() => handleUpdateQuantity(product.id, item.quantity + 1)}
                             disabled={item.quantity >= product.stock}
-                            className="w-8 h-8 md:w-10 md:h-10 rounded-full border-2 border-gray-300 flex items-center justify-center hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            className="w-8 h-8 md:w-10 md:h-10 rounded-full border-2 border-gray-300 flex items-center justify-center hover:bg-tawang-beige disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                           >
                             <Plus className="w-3 h-3 md:w-4 md:h-4" />
                           </button>
@@ -137,7 +135,7 @@ export function Cart() {
           {/* Price Summary */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-xl shadow-md p-4 md:p-6 lg:sticky lg:top-24">
-              <h2 className="text-xl md:text-2xl mb-4 md:mb-6">Price Summary</h2>
+              <h2 className="font-heading text-xl md:text-2xl mb-4 md:mb-6">Price Summary</h2>
 
               <div className="space-y-3 md:space-y-4 mb-4 md:mb-6">
                 <div className="flex justify-between text-base md:text-lg">
@@ -147,13 +145,13 @@ export function Cart() {
 
                 <div className="flex justify-between text-base md:text-lg">
                   <span className="text-gray-600">Delivery Charge:</span>
-                  <span className={deliveryCharge === 0 ? 'text-green-600' : ''}>
+                  <span className={deliveryCharge === 0 ? 'text-tawang-gold' : ''}>
                     {deliveryCharge === 0 ? 'FREE' : `₹${deliveryCharge}`}
                   </span>
                 </div>
 
                 {subtotal < FREE_DELIVERY_THRESHOLD && subtotal > 0 && (
-                  <p className="text-xs md:text-sm text-gray-600 bg-yellow-50 p-2 md:p-3 rounded-lg border border-yellow-200">
+                  <p className="text-xs md:text-sm text-gray-600 bg-tawang-cream p-2 md:p-3 rounded-lg border border-tawang-gold/25">
                     Add ₹{FREE_DELIVERY_THRESHOLD - subtotal} more to get FREE delivery!
                   </p>
                 )}
@@ -161,7 +159,7 @@ export function Cart() {
                 <div className="border-t pt-3 md:pt-4">
                   <div className="flex justify-between text-xl md:text-2xl">
                     <span>Total:</span>
-                    <span className="text-green-600 font-bold">₹{total}</span>
+                    <span className="text-tawang-gold font-bold">₹{total}</span>
                   </div>
                 </div>
               </div>
@@ -174,14 +172,14 @@ export function Cart() {
                     setIsLoginModalOpen(true);
                   }
                 }}
-                className="w-full px-4 md:px-6 py-3 md:py-4 bg-green-600 text-yellow-100 rounded-xl hover:bg-green-500 transition-colors text-base md:text-lg"
+                className="w-full px-4 md:px-6 py-3 md:py-4 bg-tawang-gold text-white/90 rounded-xl hover:bg-tawang-gold transition-colors text-base md:text-lg"
               >
                 Proceed to Checkout
               </button>
 
               <Link
                 to="/"
-                className="block text-center mt-3 md:mt-4 text-sm md:text-base text-green-600 hover:underline font-medium"
+                className="block text-center mt-3 md:mt-4 text-sm md:text-base text-tawang-gold hover:underline font-medium"
               >
                 Continue Shopping
               </Link>
