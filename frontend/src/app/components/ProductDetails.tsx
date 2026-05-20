@@ -19,7 +19,6 @@ export function ProductDetails() {
   const [lookupDone, setLookupDone] = useState(() => Boolean(product));
   const [quantity, setQuantity] = useState(1);
   const [visibleRelatedCount, setVisibleRelatedCount] = useState(20);
-  const [, setProductVersion] = useState(0);
 
   useEffect(() => {
     if (!productId) {
@@ -48,18 +47,12 @@ export function ProductDetails() {
     };
   }, [productId]);
 
-  useEffect(() => {
-    const onProductsUpdated = () => setProductVersion((v) => v + 1);
-    window.addEventListener('productsUpdated', onProductsUpdated);
-    return () => window.removeEventListener('productsUpdated', onProductsUpdated);
-  }, []);
-
   const relatedProducts = useMemo(() => {
     if (!product) return [];
     const allProducts = getProducts();
     const sameCategory = allProducts.filter((p) => p.category === product.category && p.id !== product.id);
     const fallback = allProducts.filter((p) => p.id !== product.id && p.category !== product.category);
-    return [...sameCategory, ...fallback];
+    return [...sameCategory, ...fallback].slice(0, 24);
   }, [product]);
 
   useEffect(() => {

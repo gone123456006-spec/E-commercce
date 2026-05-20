@@ -107,8 +107,9 @@ export function readSiteContentFromClient(): SiteContent {
       endAt: flashFromRuntime.endAt || flashFromStorage.endAt || ''
     },
     productCardEdits: { ...editsFromStorage, ...editsFromRuntime },
-    customCards: customFromRuntime.length ? customFromRuntime : customFromStorage,
-    deletedProductIds: deletedFromRuntime.length ? deletedFromRuntime : deletedFromStorage
+    // Runtime may be [] after save/hydrate — must not resurrect stale localStorage.
+    customCards: Array.isArray(customFromRuntime) ? customFromRuntime : customFromStorage,
+    deletedProductIds: Array.isArray(deletedFromRuntime) ? deletedFromRuntime : deletedFromStorage
   };
 }
 
@@ -175,12 +176,12 @@ export async function fetchSiteContentFromServer(): Promise<SiteContent | null> 
   }
 }
 
-export async function syncSiteContentToServer(partial: Partial<SiteContent>): Promise<boolean> {
+export async function syncSiteContentToServer(content: SiteContent): Promise<boolean> {
   try {
     const response = await fetch(apiUrl('/api/site/content'), {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(partial)
+      body: JSON.stringify(content)
     });
     if (!response.ok) return false;
     const json = await response.json();
@@ -203,6 +204,10 @@ function hasSiteContent(content: SiteContent): boolean {
 }
 
 function mergeSiteContent(local: SiteContent, remote: SiteContent): SiteContent {
+  const remoteEdits =
+    remote.productCardEdits && typeof remote.productCardEdits === 'object' && !Array.isArray(remote.productCardEdits)
+      ? remote.productCardEdits
+      : {};
   return {
     categoryThumbnails: { ...local.categoryThumbnails, ...remote.categoryThumbnails },
     homepageBanners: remote.homepageBanners.length ? remote.homepageBanners : local.homepageBanners,
@@ -210,11 +215,10 @@ function mergeSiteContent(local: SiteContent, remote: SiteContent): SiteContent 
       cards: remote.flashDeals.cards.length ? remote.flashDeals.cards : local.flashDeals.cards,
       endAt: remote.flashDeals.endAt || local.flashDeals.endAt
     },
-    productCardEdits: { ...local.productCardEdits, ...remote.productCardEdits },
-    customCards: remote.customCards.length ? remote.customCards : local.customCards,
-    deletedProductIds: remote.deletedProductIds.length
-      ? remote.deletedProductIds
-      : local.deletedProductIds
+    // Server is source of truth for dashboard card state (including empty arrays / cleared edits).
+    productCardEdits: { ...remoteEdits },
+    customCards: Array.isArray(remote.customCards) ? remote.customCards : [],
+    deletedProductIds: Array.isArray(remote.deletedProductIds) ? remote.deletedProductIds : []
   };
 }
 
@@ -232,6 +236,7 @@ export async function hydrateSiteContentFromServer(): Promise<void> {
     applySiteContentToClient(mergeSiteContent(local, remote));
   }
 
+  window.dispatchEvent(new Event('siteContentUpdated'));
   window.dispatchEvent(new Event('productsUpdated'));
 }
 
@@ -248,6 +253,45 @@ export async function persistAndSyncSiteContent(partial: Partial<SiteContent>): 
   };
 
   applySiteContentToClient(next);
-  window.dispatchEvent(new Event('productsUpdated'));
-  return syncSiteContentToServer(partial);
+  window.dispatchEvent(new Event('siteContentUpdated'));
+  if (
+    partial.productCardEdits !== undefined ||
+    partial.customCards !== undefined ||
+    partial.deletedProductIds !== undefined
+  ) {
+    window.dispatchEvent(new Event('productsUpdated'));
+  }
+  return syncSiteContentToServer(next);
+}
+
+/** Poll site content so dashboard image/card edits appear on the storefront within ~30s without a manual refresh. */
+export const SITE_CONTENT_POLL_MS = 25_000;
+
+let siteContentPollTimer: ReturnType<typeof setInterval> | null = null;
+let siteContentVisibilityAttached = false;
+
+function pollSiteContentIfVisible(): void {
+  if (typeof document !== 'undefined' && document.hidden) return;
+  void hydrateSiteContentFromServer();
+}
+
+function attachSiteContentVisibilityListener(): void {
+  if (siteContentVisibilityAttached || typeof document === 'undefined') return;
+  siteContentVisibilityAttached = true;
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) pollSiteContentIfVisible();
+  });
+}
+
+export function startSiteContentSync(): void {
+  if (typeof window === 'undefined' || siteContentPollTimer) return;
+  siteContentPollTimer = setInterval(pollSiteContentIfVisible, SITE_CONTENT_POLL_MS);
+  attachSiteContentVisibilityListener();
+}
+
+export function stopSiteContentSync(): void {
+  if (siteContentPollTimer) {
+    clearInterval(siteContentPollTimer);
+    siteContentPollTimer = null;
+  }
 }

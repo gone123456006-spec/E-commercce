@@ -37,9 +37,13 @@ export function CategoryPage() {
   }, [category]);
 
   useEffect(() => {
-    const onProductsUpdated = () => setProductVersion((v) => v + 1);
-    window.addEventListener('productsUpdated', onProductsUpdated);
-    return () => window.removeEventListener('productsUpdated', onProductsUpdated);
+    const bump = () => setProductVersion((v) => v + 1);
+    window.addEventListener('productsUpdated', bump);
+    window.addEventListener('siteContentUpdated', bump);
+    return () => {
+      window.removeEventListener('productsUpdated', bump);
+      window.removeEventListener('siteContentUpdated', bump);
+    };
   }, []);
 
   useEffect(() => {
@@ -60,7 +64,7 @@ export function CategoryPage() {
   }, [categoryProducts.length, visibleCount]);
 
   return (
-    <div className="min-h-screen max-w-full overflow-x-hidden bg-tawang-cream">
+    <div className="min-h-screen max-w-full overflow-x-clip bg-tawang-cream">
       {category && <CategoryPageHeader category={category} />}
 
       <div className="mx-auto max-w-7xl px-3 pt-1 pb-4 sm:px-4 md:pt-2 md:pb-8">

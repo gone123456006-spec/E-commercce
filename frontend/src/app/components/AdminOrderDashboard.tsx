@@ -143,8 +143,12 @@ export function AdminOrderDashboard() {
       setCategoryThumbnailOverrides(content.categoryThumbnails);
     };
     void hydrateSiteContentFromServer().then(syncAdminStateFromClient);
+    window.addEventListener('siteContentUpdated', syncAdminStateFromClient);
     window.addEventListener('productsUpdated', syncAdminStateFromClient);
-    return () => window.removeEventListener('productsUpdated', syncAdminStateFromClient);
+    return () => {
+      window.removeEventListener('siteContentUpdated', syncAdminStateFromClient);
+      window.removeEventListener('productsUpdated', syncAdminStateFromClient);
+    };
   }, []);
   const [showAddForm, setShowAddForm] = useState(false);
   const [customCards, setCustomCards] = useState<GroupProductCard[]>(
@@ -335,7 +339,7 @@ export function AdminOrderDashboard() {
       } as GroupProductCard;
       const nextCustom = [...customCards];
       nextCustom[customIndex] = updatedCard;
-      persistCustomCards(nextCustom);
+      await persistCustomCards(nextCustom);
 
       if (isMongoId) {
         await updateApiProduct(productId, {
@@ -355,7 +359,7 @@ export function AdminOrderDashboard() {
       const merged = { ...cardEdits[productId], ...draftEdit };
       const next = { ...cardEdits, [productId]: merged };
       setCardEdits(next);
-      void persistAndSyncSiteContent({ productCardEdits: next }).then(warnIfSiteSyncFailed);
+      warnIfSiteSyncFailed(await persistAndSyncSiteContent({ productCardEdits: next }));
 
       if (isMongoId) {
         const base = getProductById(productId);
@@ -378,14 +382,16 @@ export function AdminOrderDashboard() {
     toast.success(isMongoId ? 'Product updated for all visitors.' : 'Product card updated for all visitors.');
   };
 
-  const persistCustomCards = (next: GroupProductCard[]) => {
+  const persistCustomCards = async (next: GroupProductCard[]) => {
     setCustomCards(next);
-    void persistAndSyncSiteContent({ customCards: next }).then(warnIfSiteSyncFailed);
+    const saved = await persistAndSyncSiteContent({ customCards: next });
+    warnIfSiteSyncFailed(saved);
   };
 
-  const persistDeletedCardIds = (next: string[]) => {
+  const persistDeletedCardIds = async (next: string[]) => {
     setDeletedCardIds(next);
-    void persistAndSyncSiteContent({ deletedProductIds: next }).then(warnIfSiteSyncFailed);
+    const saved = await persistAndSyncSiteContent({ deletedProductIds: next });
+    warnIfSiteSyncFailed(saved);
   };
 
   const handleDeleteCard = async (card: GroupProductCard) => {
@@ -397,26 +403,25 @@ export function AdminOrderDashboard() {
     if (isMongoId) {
       await deleteApiProduct(card.productId);
       const nextCustomCards = customCards.filter((item) => item.productId !== card.productId);
-      persistCustomCards(nextCustomCards);
+      await persistCustomCards(nextCustomCards);
       void fetchApiProducts();
     } else if (card.productId.startsWith('custom_')) {
       const nextCustomCards = customCards.filter((item) => item.productId !== card.productId);
-      persistCustomCards(nextCustomCards);
+      await persistCustomCards(nextCustomCards);
     } else if (!deletedCardIds.includes(card.productId)) {
-      persistDeletedCardIds([...deletedCardIds, card.productId]);
+      await persistDeletedCardIds([...deletedCardIds, card.productId]);
     }
 
     if (cardEdits[card.productId]) {
       const nextEdits = { ...cardEdits };
       delete nextEdits[card.productId];
       setCardEdits(nextEdits);
-      void persistAndSyncSiteContent({ productCardEdits: nextEdits }).then(warnIfSiteSyncFailed);
+      warnIfSiteSyncFailed(await persistAndSyncSiteContent({ productCardEdits: nextEdits }));
     }
 
     if (editingCardId === card.productId) {
       cancelEditing();
     }
-    window.dispatchEvent(new Event('productsUpdated'));
   };
 
   const processImageFile = (file: File | null, onReady: (dataUrl: string) => void) => {
@@ -663,10 +668,10 @@ export function AdminOrderDashboard() {
     }
 
     newCard.productId = result.product.id;
-    persistCustomCards([newCard, ...customCards]);
+    await persistCustomCards([newCard, ...customCards]);
     scheduleVisibilityRefresh();
     void fetchApiProducts();
-    toast.success('Product saved! It will show on all phones and browsers in about 5 seconds.');
+    toast.success('Product saved and synced — it will show on the website for all visitors.');
     setShowAddForm(false);
     setAddDraft({
       name: '',

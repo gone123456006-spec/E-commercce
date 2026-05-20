@@ -45,21 +45,16 @@ const response = await fetch(`${API_URL}/api/auth/send-otp`, {
 
 ## Current Setup
 
-**With Proxy (Recommended for Development):**
-- Frontend: `http://localhost:5173`
-- Backend: `http://localhost:5000`
-- API calls: `/api/auth/*` → proxied to `http://localhost:5000/api/auth/*`
+**Vite dev proxy (`/api` → backend):**
 
-**Without Proxy (For Production):**
-- Use `VITE_API_BASE_URL` in fetch calls
-- Build with: `npm run build`
-- Deploy frontend and backend separately
+- By default, `/api` is proxied to your **deployed Render API** so the app works even when `localhost:5000` is not running (no more `ECONNREFUSED` in the terminal).
+- To use your **local** backend instead, add to `.env` or `.env.local`:
+  - `VITE_DEV_PROXY_TARGET=http://127.0.0.1:5000`
+  - Then run `cd backend && npm run dev`.
 
-## Notes
+If `VITE_API_BASE_URL` is set to a non-local URL, that URL is also used as the proxy target when `VITE_DEV_PROXY_TARGET` is unset.
 
-- ✅ `.env` file created with default values
-- ✅ `.env.example` created as template
-- ✅ `.gitignore` created to protect sensitive files
-- ✅ Proxy configuration already in `vite.config.ts`
+**Without Proxy (Production):**
 
-The frontend environment is now properly configured!
+- `VITE_API_BASE_URL` is used directly in the built app.
+

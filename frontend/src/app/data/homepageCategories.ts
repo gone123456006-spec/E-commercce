@@ -79,7 +79,7 @@ export function persistCategoryThumbnailOverrides(next: CategoryThumbnailOverrid
   } catch {
     // quota exceeded — runtime override still applies this session
   }
-  window.dispatchEvent(new Event('productsUpdated'));
+  window.dispatchEvent(new Event('siteContentUpdated'));
 }
 
 function mergeWithOverrides(categories: HomepageCategory[]): HomepageCategory[] {

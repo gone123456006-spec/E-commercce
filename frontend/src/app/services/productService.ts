@@ -1,7 +1,8 @@
 import type { Product } from '../data/products';
 import { apiUrl } from '../lib/api';
 
-export const PRODUCT_POLL_MS = 5000;
+/** Poll every 30s (was 5s — caused lag and constant re-renders) */
+export const PRODUCT_POLL_MS = 30_000;
 export const PRODUCT_VISIBILITY_DELAY_MS = 5000;
 
 export interface CreateProductPayload {
@@ -49,7 +50,10 @@ export function mapApiProductToProduct(record: ApiProductRecord): Product {
 const API_PRODUCTS_SESSION_KEY = 'api_products_cache_v1';
 
 function productsFingerprint(list: Product[]): string {
-  return list.map((p) => `${p.id}:${p.price}:${p.stock}:${p.image}`).join('|');
+  if (list.length === 0) return '0';
+  const first = list[0];
+  const last = list[list.length - 1];
+  return `${list.length}:${first.id}:${first.price}:${first.stock}:${last.id}`;
 }
 
 function readSessionApiProducts(): Product[] {
@@ -79,10 +83,12 @@ function setApiProductsCache(products: Product[], dispatchUpdate: boolean): void
   const prevFingerprint = productsFingerprint(win.__API_PRODUCTS__ ?? []);
   const nextFingerprint = productsFingerprint(products);
 
+  if (prevFingerprint === nextFingerprint) return;
+
   win.__API_PRODUCTS__ = products;
   writeSessionApiProducts(products);
 
-  if (dispatchUpdate && prevFingerprint !== nextFingerprint) {
+  if (dispatchUpdate) {
     window.dispatchEvent(new Event('productsUpdated'));
   }
 }
@@ -90,7 +96,7 @@ function setApiProductsCache(products: Product[], dispatchUpdate: boolean): void
 export function hydrateApiProductsFromSession(): void {
   const cached = readSessionApiProducts();
   if (cached.length === 0) return;
-  setApiProductsCache(cached, true);
+  setApiProductsCache(cached, false);
 }
 
 export function getApiProductsCache(): Product[] {
@@ -100,6 +106,10 @@ export function getApiProductsCache(): Product[] {
 }
 
 export async function fetchApiProducts(): Promise<Product[]> {
+  if (typeof document !== 'undefined' && document.hidden) {
+    return getApiProductsCache();
+  }
+
   try {
     const response = await fetch(apiUrl('/api/products'));
     if (!response.ok) return getApiProductsCache();
@@ -187,15 +197,27 @@ export function scheduleVisibilityRefresh(): void {
 }
 
 let pollTimer: ReturnType<typeof setInterval> | null = null;
+let visibilityListenerAttached = false;
+
+function pollIfVisible(): void {
+  if (typeof document !== 'undefined' && document.hidden) return;
+  void fetchApiProducts();
+}
+
+function attachVisibilityListener(): void {
+  if (visibilityListenerAttached || typeof document === 'undefined') return;
+  visibilityListenerAttached = true;
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) pollIfVisible();
+  });
+}
 
 export function startProductsSync(): void {
   if (typeof window === 'undefined' || pollTimer) return;
 
-  hydrateApiProductsFromSession();
-  void fetchApiProducts();
-  pollTimer = setInterval(() => {
-    void fetchApiProducts();
-  }, PRODUCT_POLL_MS);
+  pollIfVisible();
+  pollTimer = setInterval(pollIfVisible, PRODUCT_POLL_MS);
+  attachVisibilityListener();
 }
 
 export function stopProductsSync(): void {

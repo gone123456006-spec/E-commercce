@@ -37,6 +37,22 @@ interface AdminCustomCardShape {
   quantitySold?: number;
 }
 
+function applyCardOverridesToProduct(product: Product, override?: ProductOverrideShape): Product {
+  if (!override) return product;
+  return {
+    ...product,
+    name: typeof override.name === 'string' && override.name.trim() ? override.name : product.name,
+    image: typeof override.image === 'string' && override.image.trim() ? override.image : product.image,
+    category: typeof override.category === 'string' && override.category.trim() ? override.category : product.category,
+    description:
+      typeof override.description === 'string' && override.description.trim()
+        ? override.description
+        : product.description,
+    stock: typeof override.stock === 'number' && Number.isFinite(override.stock) ? override.stock : product.stock,
+    price: typeof override.price === 'number' && Number.isFinite(override.price) ? override.price : product.price
+  };
+}
+
 export const products: Product[] = [
   // Clothes
   {
@@ -2913,9 +2929,8 @@ function getCustomCards(): AdminCustomCardShape[] {
   } catch {
     fromStorage = [];
   }
-  return Array.isArray(runtimeCards) && runtimeCards.length
-    ? (runtimeCards as AdminCustomCardShape[])
-    : fromStorage;
+  // Empty [] from dashboard/hydrate is valid — do not fall back to stale storage.
+  return Array.isArray(runtimeCards) ? (runtimeCards as AdminCustomCardShape[]) : fromStorage;
 }
 
 function getDeletedCardIds(): Set<string> {
@@ -2929,19 +2944,23 @@ function getDeletedCardIds(): Set<string> {
   } catch {
     fromStorage = [];
   }
-  const ids =
-    Array.isArray(runtimeDeleted) && runtimeDeleted.length ? runtimeDeleted : fromStorage;
+  const ids = Array.isArray(runtimeDeleted) ? runtimeDeleted : fromStorage;
   return new Set(ids.filter((id: unknown) => typeof id === 'string' && id.trim()));
 }
 
 let productsListCache: Product[] | null = null;
+let invalidateTimer: ReturnType<typeof setTimeout> | undefined;
 
 function invalidateProductsListCache(): void {
-  productsListCache = null;
+  clearTimeout(invalidateTimer);
+  invalidateTimer = setTimeout(() => {
+    productsListCache = null;
+  }, 80);
 }
 
 if (typeof window !== 'undefined') {
   window.addEventListener('productsUpdated', invalidateProductsListCache);
+  window.addEventListener('siteContentUpdated', invalidateProductsListCache);
 }
 
 export const getProducts = (): Product[] => {
@@ -2949,21 +2968,11 @@ export const getProducts = (): Product[] => {
 
   const overrides = getProductOverrides();
   const deletedIds = getDeletedCardIds();
-  const baseProducts = products.map((product) => {
-    const override = overrides[product.id];
-    if (!override) return product;
-    return {
-      ...product,
-      name: typeof override.name === 'string' && override.name.trim() ? override.name : product.name,
-      image: typeof override.image === 'string' && override.image.trim() ? override.image : product.image,
-      category: typeof override.category === 'string' && override.category.trim() ? override.category : product.category,
-      description: typeof override.description === 'string' && override.description.trim() ? override.description : product.description,
-      stock: typeof override.stock === 'number' && Number.isFinite(override.stock) ? override.stock : product.stock,
-      price: typeof override.price === 'number' && Number.isFinite(override.price) ? override.price : product.price
-    };
-  });
+  const baseProducts = products.map((product) => applyCardOverridesToProduct(product, overrides[product.id]));
 
-  const apiProducts = getApiProductsCache().filter((product) => !deletedIds.has(product.id));
+  const apiProducts = getApiProductsCache()
+    .filter((product) => !deletedIds.has(product.id))
+    .map((product) => applyCardOverridesToProduct(product, overrides[product.id]));
   const apiProductIds = new Set(apiProducts.map((product) => product.id));
 
   const customProducts = getCustomCards()

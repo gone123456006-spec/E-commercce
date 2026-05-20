@@ -25,16 +25,25 @@ export function Navbar() {
 
   useEffect(() => {
     setIsMobileMenuOpen(false);
+    document.body.style.removeProperty('overflow');
   }, [location]);
 
   useEffect(() => {
-    if (!isMobileMenuOpen) return;
-    const prev = document.body.style.overflow;
+    if (!isMobileMenuOpen) {
+      document.body.style.removeProperty('overflow');
+      return;
+    }
     document.body.style.overflow = 'hidden';
     return () => {
-      document.body.style.overflow = prev;
+      document.body.style.removeProperty('overflow');
     };
   }, [isMobileMenuOpen]);
+
+  useEffect(() => {
+    return () => {
+      document.body.style.removeProperty('overflow');
+    };
+  }, []);
 
   const isActive = (path: string) => location.pathname === path;
 

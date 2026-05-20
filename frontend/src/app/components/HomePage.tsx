@@ -5,6 +5,7 @@ import { getProductById, getProducts } from '../data/products';
 import { ProductImage } from './ProductImage';
 import { CategoryCardLabel } from './CategoryCardLabel';
 import { SectionHeading } from './SectionHeading';
+import { FlashDealCountdown } from './FlashDealCountdown';
 import { addToCart, getCart, getOrders } from '../utils/storage';
 import { useHomepagePreload } from '../hooks/useHomepagePreload';
 import {
@@ -102,6 +103,8 @@ const topBrands = [
   { id: 'wellness', label: 'Wellness+' }
 ];
 
+const SHOP_PRODUCTS_PER_ROW = 10;
+
 
 export function HomePage() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -110,7 +113,6 @@ export function HomePage() {
   const [selectedQuantities, setSelectedQuantities] = useState<Record<string, number>>({});
   const [cartSubtotal, setCartSubtotal] = useState(0);
   const [brandFilter, setBrandFilter] = useState('all');
-  const [countdownNow, setCountdownNow] = useState(Date.now());
   const [recentlyViewedIds, setRecentlyViewedIds] = useState<string[]>(() => {
     try {
       const raw = localStorage.getItem(RECENTLY_VIEWED_KEY);
@@ -130,11 +132,11 @@ export function HomePage() {
     }
   });
   const [flashDealConfig, setFlashDealConfig] = useState<FlashDealConfig>(() => getFlashDealConfig());
-  const [, setProductVersion] = useState(0);
+  const [productVersion, setProductVersion] = useState(0);
   const [categoryThumbVersion, setCategoryThumbVersion] = useState(0);
   const navigate = useNavigate();
-  const liveProducts = getProducts();
-  const orders = getOrders();
+  const liveProducts = useMemo(() => getProducts(), [productVersion]);
+  const orders = useMemo(() => getOrders(), [productVersion]);
 
   const snacksAndDrinksCategories = useMemo(
     () => getSnacksAndDrinksCategories(),
@@ -237,7 +239,6 @@ export function HomePage() {
   );
 
   useHomepagePreload({
-    products: liveProducts,
     banners,
     categoryImages,
     sectionProducts: [
@@ -259,20 +260,23 @@ export function HomePage() {
 
 
   useEffect(() => {
-    const onProductsUpdated = () => {
+    const onSiteContentUpdated = () => {
       setBanners(getHomeBanners());
       setFlashDealConfig(getFlashDealConfig());
-      setProductVersion((v) => v + 1);
       setCategoryThumbVersion((v) => v + 1);
+      setProductVersion((v) => v + 1);
     };
+    const onProductsUpdated = () => setProductVersion((v) => v + 1);
     const onStorage = (e: StorageEvent) => {
       if (e.key === ADMIN_CATEGORY_THUMBNAILS_KEY) {
         setCategoryThumbVersion((v) => v + 1);
       }
     };
+    window.addEventListener('siteContentUpdated', onSiteContentUpdated);
     window.addEventListener('productsUpdated', onProductsUpdated);
     window.addEventListener('storage', onStorage);
     return () => {
+      window.removeEventListener('siteContentUpdated', onSiteContentUpdated);
       window.removeEventListener('productsUpdated', onProductsUpdated);
       window.removeEventListener('storage', onStorage);
     };
@@ -299,11 +303,6 @@ export function HomePage() {
       window.removeEventListener('cartUpdated', syncSubtotal);
       window.removeEventListener('storage', syncSubtotal);
     };
-  }, []);
-
-  useEffect(() => {
-    const timer = window.setInterval(() => setCountdownNow(Date.now()), 1000);
-    return () => window.clearInterval(timer);
   }, []);
 
   const nextBanner = () => {
@@ -341,15 +340,6 @@ export function HomePage() {
     }
   };
 
-  const flashEndsAt = flashDealConfig.endAt ? new Date(flashDealConfig.endAt) : new Date();
-  if (!flashDealConfig.endAt) {
-    flashEndsAt.setHours(23, 59, 59, 999);
-  }
-  const remainingMs = Math.max(0, flashEndsAt.getTime() - countdownNow);
-  const hrs = String(Math.floor(remainingMs / 3600000)).padStart(2, '0');
-  const mins = String(Math.floor((remainingMs % 3600000) / 60000)).padStart(2, '0');
-  const secs = String(Math.floor((remainingMs % 60000) / 1000)).padStart(2, '0');
-
   const updateSelectedQuantity = (productId: string, nextQuantity: number) => {
     setSelectedQuantities((prev) => ({
       ...prev,
@@ -367,7 +357,7 @@ export function HomePage() {
   };
 
   return (
-    <div className="max-w-full overflow-x-hidden bg-tawang-cream">
+    <div className="max-w-full overflow-x-clip bg-tawang-cream">
       {/* Search Bar */}
       <div className="fixed left-0 right-0 z-[90] border-b border-tawang-gold/10 bg-tawang-cream/95 py-2.5 px-3 backdrop-blur-md top-[calc(3.5rem+env(safe-area-inset-top,0px))] md:sticky md:top-[calc(4rem+env(safe-area-inset-top,0px))] md:z-40 md:py-3 md:px-4 sm:py-4">
         <div className="max-w-xl mx-auto">
@@ -397,7 +387,9 @@ export function HomePage() {
       {/* Auto-Sliding Banner Section */}
       <div className="w-full max-w-7xl mx-auto px-3 sm:px-4 py-3 sm:py-4 md:py-6">
         <div className="relative group rounded-xl sm:rounded-2xl overflow-hidden shadow-lg bg-tawang-beige h-[160px] sm:h-auto w-full">
-          {banners.map((banner, idx) => (
+          {banners.map((banner, idx) => {
+            if (Math.abs(idx - currentBanner) > 1) return null;
+            return (
             <Link
               key={idx}
               to={banner.link}
@@ -407,13 +399,14 @@ export function HomePage() {
               <img
                 src={banner.src}
                 alt={`Banner ${idx + 1}`}
-                loading={idx === 0 ? 'eager' : 'lazy'}
+                loading={idx === currentBanner ? 'eager' : 'lazy'}
                 decoding="async"
-                fetchPriority={idx === 0 ? 'high' : 'low'}
+                fetchPriority={idx === currentBanner ? 'high' : 'low'}
                 className="w-full h-full sm:h-auto object-cover sm:object-top"
               />
             </Link>
-          ))}
+            );
+          })}
 
           <button
             onClick={prevBanner}
@@ -661,11 +654,7 @@ export function HomePage() {
 
       <div id="flash-deals" className="max-w-7xl mx-auto px-3 sm:px-4 pb-6">
         <SectionHeading as="h3" className="mb-2" title="Flash Deals" />
-        <div className="mb-3 flex justify-center">
-          <div className="text-xs sm:text-sm font-semibold text-red-600 bg-red-50 px-2.5 py-1 rounded">
-            Ends in {hrs}:{mins}:{secs}
-          </div>
-        </div>
+        <FlashDealCountdown endAt={flashDealConfig.endAt} />
         <div className="scroll-row-x no-scrollbar">
           <div className="flex w-max gap-3">
             {flashDealProducts.map((product) => (
@@ -792,17 +781,12 @@ export function HomePage() {
                 const bCustom = b.id.startsWith('custom_') ? 1 : 0;
                 if (aCustom !== bCustom) return bCustom - aCustom;
                 return b.rating - a.rating || a.price - b.price;
-              });
-            const primaryRowProducts = groupProducts;
-            const secondaryRowProducts = groupProducts.length > 0
-              ? [...groupProducts.slice(6), ...groupProducts.slice(0, 6)]
-              : [];
-            const tertiaryRowProducts = groupProducts.length > 0
-              ? [...groupProducts.slice(12), ...groupProducts.slice(0, 12)]
-              : [];
-            const quaternaryRowProducts = groupProducts.length > 0
-              ? [...groupProducts.slice(18), ...groupProducts.slice(0, 18)]
-              : [];
+              })
+              .slice(0, SHOP_PRODUCTS_PER_ROW * 2);
+            const primaryRowProducts = groupProducts.slice(0, SHOP_PRODUCTS_PER_ROW);
+            const secondaryRowProducts = groupProducts.slice(SHOP_PRODUCTS_PER_ROW);
+            const tertiaryRowProducts: typeof groupProducts = [];
+            const quaternaryRowProducts: typeof groupProducts = [];
 
             return (
               <section key={group.id}>

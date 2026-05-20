@@ -78,7 +78,7 @@ export function prefetchProduct(productId: string): void {
 }
 
 export function prefetchCategory(categoryId: string): void {
-  const products = getProductsByCategory(categoryId).slice(0, 24);
+  const products = getProductsByCategory(categoryId).slice(0, 12);
   preloadImageUrls(products.map((p) => p.image).filter(Boolean));
 }
 
@@ -97,6 +97,6 @@ export function preloadHomepageAssets(input: HomepagePreloadInput): void {
     preloadImageUrl(src);
   });
 
-  preloadImageUrls(categoryImages.slice(0, 12));
-  preloadImageUrlsQueued([...productImages, ...categoryImages.slice(12)], 24);
+  preloadImageUrls(categoryImages.slice(0, 8));
+  preloadImageUrlsQueued(productImages, 12);
 }

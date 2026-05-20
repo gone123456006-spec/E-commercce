@@ -106,21 +106,22 @@
   html {
     font-size: var(--font-size);
     scroll-behavior: smooth;
-    overflow-x: hidden;
     max-width: 100%;
-    overscroll-behavior-y: none;
+    overscroll-behavior-y: auto;
   }
 
   body {
     @apply bg-background text-foreground antialiased;
     font-family: var(--font-body);
-    overflow-x: hidden;
+    overflow-x: clip;
+    overflow-y: auto;
     max-width: 100%;
-    overscroll-behavior-y: none;
+    overscroll-behavior-y: auto;
   }
 
   #root {
-    overflow-x: hidden;
+    overflow-x: clip;
+    overflow-y: visible;
     max-width: 100%;
     min-height: 100%;
   }
