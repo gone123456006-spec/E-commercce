@@ -811,7 +811,7 @@ export function HomePage() {
                               alt={product.name}
                               containerClassName="rounded-lg mb-2"
                             />
-                            <p className="text-xs sm:text-sm font-semibold text-gray-900 line-clamp-2 min-h-[2.2rem]">
+                            <p className="text-xs sm:text-sm font-semibold text-gray-900 leading-snug min-h-[2.5rem]">
                               {product.name}
                             </p>
                           </Link>
@@ -877,7 +877,7 @@ export function HomePage() {
                                 alt={product.name}
                                 containerClassName="rounded-lg mb-2"
                               />
-                              <p className="text-xs sm:text-sm font-semibold text-gray-900 line-clamp-2 min-h-[2.2rem]">
+                              <p className="text-xs sm:text-sm font-semibold text-gray-900 leading-snug min-h-[2.5rem]">
                                 {product.name}
                               </p>
                             </Link>
@@ -944,7 +944,7 @@ export function HomePage() {
                                 alt={product.name}
                                 containerClassName="rounded-lg mb-2"
                               />
-                              <p className="text-xs sm:text-sm font-semibold text-gray-900 line-clamp-2 min-h-[2.2rem]">
+                              <p className="text-xs sm:text-sm font-semibold text-gray-900 leading-snug min-h-[2.5rem]">
                                 {product.name}
                               </p>
                             </Link>
@@ -1011,7 +1011,7 @@ export function HomePage() {
                                 alt={product.name}
                                 containerClassName="rounded-lg mb-2"
                               />
-                              <p className="text-xs sm:text-sm font-semibold text-gray-900 line-clamp-2 min-h-[2.2rem]">
+                              <p className="text-xs sm:text-sm font-semibold text-gray-900 leading-snug min-h-[2.5rem]">
                                 {product.name}
                               </p>
                             </Link>
