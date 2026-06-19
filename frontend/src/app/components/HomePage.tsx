@@ -390,21 +390,21 @@ export function HomePage() {
           {banners.map((banner, idx) => {
             if (Math.abs(idx - currentBanner) > 1) return null;
             return (
-            <Link
-              key={idx}
-              to={banner.link}
-              className={`transition-opacity duration-500 ease-in-out block ${currentBanner === idx ? 'opacity-100 z-10' : 'opacity-0 z-0'
-                } ${idx === 0 ? 'sm:relative absolute inset-0' : 'absolute inset-0'}`}
-            >
-              <img
-                src={banner.src}
-                alt={`Banner ${idx + 1}`}
-                loading={idx === currentBanner ? 'eager' : 'lazy'}
-                decoding="async"
-                fetchPriority={idx === currentBanner ? 'high' : 'low'}
-                className="w-full h-full object-cover object-center"
-              />
-            </Link>
+              <Link
+                key={idx}
+                to={banner.link}
+                className={`transition-opacity duration-500 ease-in-out block ${currentBanner === idx ? 'opacity-100 z-10' : 'opacity-0 z-0'
+                  } ${idx === 0 ? 'sm:relative absolute inset-0' : 'absolute inset-0'}`}
+              >
+                <img
+                  src={banner.src}
+                  alt={`Banner ${idx + 1}`}
+                  loading={idx === currentBanner ? 'eager' : 'lazy'}
+                  decoding="async"
+                  fetchPriority={idx === currentBanner ? 'high' : 'low'}
+                  className="w-full h-full object-cover object-center"
+                />
+              </Link>
             );
           })}
 
@@ -656,9 +656,9 @@ export function HomePage() {
         <SectionHeading as="h3" className="mb-2" title="Flash Deals" />
         <FlashDealCountdown endAt={flashDealConfig.endAt} />
         <div className="scroll-row-x no-scrollbar">
-          <div className="flex w-max gap-3">
+          <div className="flex w-max gap-3 items-stretch">
             {flashDealProducts.map((product) => (
-              <div key={`flash-${product.id}`} className="min-w-[180px] sm:min-w-[210px] bg-white border rounded-xl p-2.5">
+              <div key={`flash-${product.id}`} className="flex flex-col h-full min-w-[180px] sm:min-w-[210px] bg-white border rounded-xl p-2.5">
                 <Link to={`/product/${product.id}`} onClick={() => trackProductView(product.id)}>
                   <div className="relative mb-2">
                     <ProductImage priority size="md" src={product.image} alt={product.name} containerClassName="rounded-lg" />
@@ -670,7 +670,7 @@ export function HomePage() {
                   </div>
                   <p className="text-xs sm:text-sm font-semibold text-gray-900 line-clamp-2">{product.name}</p>
                 </Link>
-                <p className="mt-1 text-sm font-bold text-tawang-gold">â‚¹{product.price}</p>
+                <p className="mt-auto pt-1 text-sm font-bold text-tawang-gold">Rs. {product.price}</p>
                 <button onClick={() => handleAddToCart(product.id)} className="mt-2 w-full px-3 py-1.5 text-xs sm:text-sm tawang-btn-primary rounded-xl">
                   Add to Cart
                 </button>
@@ -688,12 +688,12 @@ export function HomePage() {
             <span className="text-[11px] sm:text-xs px-2 py-1 rounded-full bg-tawang-beige text-tawang-gold">Buy Again</span>
           </div>
           <div className="scroll-row-x no-scrollbar">
-            <div className="flex w-max gap-2.5">
+            <div className="flex w-max gap-2.5 items-stretch">
               {buyAgainProducts.length > 0 ? buyAgainProducts.map((p) => (
-                <Link key={`history-${p.id}`} to={`/product/${p.id}`} onClick={() => trackProductView(p.id)} className="min-w-[150px] sm:min-w-[190px] border rounded-lg p-2 bg-white">
+                <Link key={`history-${p.id}`} to={`/product/${p.id}`} onClick={() => trackProductView(p.id)} className="flex flex-col h-full min-w-[150px] sm:min-w-[190px] border rounded-lg p-2 bg-white">
                   <ProductImage size="xs" src={p.image} alt={p.name} containerClassName="rounded-md mb-1.5" />
                   <p className="text-xs sm:text-sm line-clamp-2">{p.name}</p>
-                  <p className="text-sm font-bold text-tawang-gold mt-1">â‚¹{p.price}</p>
+                  <p className="text-sm font-bold text-tawang-gold mt-auto pt-1">Rs. {p.price}</p>
                 </Link>
               )) : (
                 <p className="text-xs sm:text-sm text-gray-500">No buying history yet. Place some orders to see this section.</p>
@@ -710,20 +710,19 @@ export function HomePage() {
         ].map((section) => (
           <div
             key={section.title}
-            className={`rounded-xl p-3 sm:p-4 border ${
-              section.title === 'Recently Viewed'
+            className={`rounded-xl p-3 sm:p-4 border ${section.title === 'Recently Viewed'
                 ? 'bg-gradient-to-r from-tawang-beige to-tawang-cream border-tawang-gold/30'
                 : 'bg-white border-tawang-navy/10'
-            }`}
+              }`}
           >
             <h4 className="font-heading text-sm sm:text-base md:text-lg font-semibold mb-2">{section.title}</h4>
             <div className="scroll-row-x no-scrollbar">
-              <div className="flex w-max gap-2.5">
+              <div className="flex w-max gap-2.5 items-stretch">
                 {section.products.length > 0 ? section.products.map((p) => (
-                  <Link key={`${section.title}-${p.id}`} to={`/product/${p.id}`} onClick={() => trackProductView(p.id)} className="min-w-[150px] sm:min-w-[190px] border rounded-lg p-2">
+                  <Link key={`${section.title}-${p.id}`} to={`/product/${p.id}`} onClick={() => trackProductView(p.id)} className="flex flex-col h-full min-w-[150px] sm:min-w-[190px] border rounded-lg p-2">
                     <ProductImage size="xs" src={p.image} alt={p.name} containerClassName="rounded-md mb-1.5" />
                     <p className="text-xs sm:text-sm line-clamp-2">{p.name}</p>
-                    <p className="text-sm font-bold text-tawang-gold mt-1">â‚¹{p.price}</p>
+                    <p className="text-sm font-bold text-tawang-gold mt-auto pt-1">Rs. {p.price}</p>
                   </Link>
                 )) : (
                   <p className="text-xs sm:text-sm text-gray-500">No data yet. Start ordering to personalize this section.</p>
@@ -751,12 +750,12 @@ export function HomePage() {
           </div>
         </div>
         <div className="scroll-row-x no-scrollbar">
-          <div className="flex w-max gap-3">
+          <div className="flex w-max gap-3 items-stretch">
             {brandFilteredProducts.map((p) => (
-              <Link key={`brand-${p.id}`} to={`/product/${p.id}`} onClick={() => trackProductView(p.id)} className="min-w-[170px] sm:min-w-[200px] bg-white border rounded-xl p-2.5">
+              <Link key={`brand-${p.id}`} to={`/product/${p.id}`} onClick={() => trackProductView(p.id)} className="flex flex-col h-full min-w-[170px] sm:min-w-[200px] bg-white border rounded-xl p-2.5">
                 <ProductImage size="md" src={p.image} alt={p.name} containerClassName="rounded-lg mb-2" />
                 <p className="text-xs sm:text-sm line-clamp-2">{p.name}</p>
-                <p className="text-sm font-bold text-tawang-gold mt-1">â‚¹{p.price}</p>
+                <p className="text-sm font-bold text-tawang-gold mt-auto pt-1">Rs. {p.price}</p>
               </Link>
             ))}
           </div>
@@ -794,7 +793,7 @@ export function HomePage() {
                   {group.title}
                 </h4>
                 <div className="scroll-row-x no-scrollbar">
-                  <div className="flex w-max gap-3 sm:gap-4">
+                  <div className="flex w-max gap-3 sm:gap-4 items-stretch">
                     {primaryRowProducts.map((product, index) => {
                       const mrp = Math.round(product.price * 1.15);
                       const discountPercent = Math.round(((mrp - product.price) / mrp) * 100);
@@ -803,7 +802,7 @@ export function HomePage() {
                       return (
                         <div
                           key={`${product.id}-${index}`}
-                          className="min-w-[180px] sm:min-w-[200px] md:min-w-[220px] bg-white border border-tawang-gold/15 tawang-card rounded-xl p-2.5 sm:p-3 shadow-sm"
+                          className="flex flex-col h-full min-w-[180px] sm:min-w-[200px] md:min-w-[220px] bg-white border border-tawang-gold/15 tawang-card rounded-xl p-2.5 sm:p-3 shadow-sm"
                         >
                           <Link to={`/product/${product.id}`} onClick={() => trackProductView(product.id)} className="block">
                             <ProductImage
@@ -817,14 +816,14 @@ export function HomePage() {
                             </p>
                           </Link>
 
-                          <div className="mt-2 flex items-center gap-2">
-                            <p className="text-sm sm:text-base font-bold text-tawang-gold">â‚¹{product.price}</p>
-                            <p className="text-xs text-gray-400 line-through">â‚¹{mrp}</p>
+                          <div className="mt-auto pt-2 flex items-center gap-2">
+                            <p className="text-sm sm:text-base font-bold text-tawang-gold">Rs. {product.price}</p>
+                            <p className="text-xs text-gray-400 line-through">Rs. {mrp}</p>
                             <span className="text-[10px] sm:text-xs text-emerald-700 font-semibold">{discountPercent}% OFF</span>
                           </div>
 
                           <div className="mt-2 flex items-center justify-between">
-                            <p className="text-xs sm:text-sm text-gray-600">â­ {product.rating.toFixed(1)}</p>
+                            <p className="text-xs sm:text-sm text-gray-600">★ {product.rating.toFixed(1)}</p>
                             <div className="inline-flex items-center border rounded-md overflow-hidden">
                               <button
                                 type="button"
@@ -860,7 +859,7 @@ export function HomePage() {
                 </div>
                 {secondaryRowProducts.length > 0 && (
                   <div className="scroll-row-x no-scrollbar mt-3">
-                    <div className="flex w-max gap-3 sm:gap-4">
+                    <div className="flex w-max gap-3 sm:gap-4 items-stretch">
                       {secondaryRowProducts.map((product, index) => {
                         const mrp = Math.round(product.price * 1.15);
                         const discountPercent = Math.round(((mrp - product.price) / mrp) * 100);
@@ -869,7 +868,7 @@ export function HomePage() {
                         return (
                           <div
                             key={`${group.id}-extra-${product.id}-${index}`}
-                            className="min-w-[180px] sm:min-w-[200px] md:min-w-[220px] bg-white border border-tawang-gold/15 tawang-card rounded-xl p-2.5 sm:p-3 shadow-sm"
+                            className="flex flex-col h-full min-w-[180px] sm:min-w-[200px] md:min-w-[220px] bg-white border border-tawang-gold/15 tawang-card rounded-xl p-2.5 sm:p-3 shadow-sm"
                           >
                             <Link to={`/product/${product.id}`} onClick={() => trackProductView(product.id)} className="block">
                               <ProductImage
@@ -883,9 +882,9 @@ export function HomePage() {
                               </p>
                             </Link>
 
-                            <div className="mt-2 flex items-center gap-2">
-                              <p className="text-sm sm:text-base font-bold text-tawang-gold">â‚¹{product.price}</p>
-                              <p className="text-xs text-gray-400 line-through">â‚¹{mrp}</p>
+                            <div className="mt-auto pt-2 flex items-center gap-2">
+                              <p className="text-sm sm:text-base font-bold text-tawang-gold">Rs. {product.price}</p>
+                              <p className="text-xs text-gray-400 line-through">Rs. {mrp}</p>
                               <span className="text-[10px] sm:text-xs text-emerald-700 font-semibold">{discountPercent}% OFF</span>
                             </div>
 
@@ -927,7 +926,7 @@ export function HomePage() {
                 )}
                 {tertiaryRowProducts.length > 0 && (
                   <div className="scroll-row-x no-scrollbar mt-3">
-                    <div className="flex w-max gap-3 sm:gap-4">
+                    <div className="flex w-max gap-3 sm:gap-4 items-stretch">
                       {tertiaryRowProducts.map((product, index) => {
                         const mrp = Math.round(product.price * 1.15);
                         const discountPercent = Math.round(((mrp - product.price) / mrp) * 100);
@@ -936,7 +935,7 @@ export function HomePage() {
                         return (
                           <div
                             key={`${group.id}-extra2-${product.id}-${index}`}
-                            className="min-w-[180px] sm:min-w-[200px] md:min-w-[220px] bg-white border border-tawang-gold/15 tawang-card rounded-xl p-2.5 sm:p-3 shadow-sm"
+                            className="flex flex-col h-full min-w-[180px] sm:min-w-[200px] md:min-w-[220px] bg-white border border-tawang-gold/15 tawang-card rounded-xl p-2.5 sm:p-3 shadow-sm"
                           >
                             <Link to={`/product/${product.id}`} onClick={() => trackProductView(product.id)} className="block">
                               <ProductImage
@@ -950,9 +949,9 @@ export function HomePage() {
                               </p>
                             </Link>
 
-                            <div className="mt-2 flex items-center gap-2">
-                              <p className="text-sm sm:text-base font-bold text-tawang-gold">â‚¹{product.price}</p>
-                              <p className="text-xs text-gray-400 line-through">â‚¹{mrp}</p>
+                            <div className="mt-auto pt-2 flex items-center gap-2">
+                              <p className="text-sm sm:text-base font-bold text-tawang-gold">Rs. {product.price}</p>
+                              <p className="text-xs text-gray-400 line-through">Rs. {mrp}</p>
                               <span className="text-[10px] sm:text-xs text-emerald-700 font-semibold">{discountPercent}% OFF</span>
                             </div>
 
@@ -994,7 +993,7 @@ export function HomePage() {
                 )}
                 {quaternaryRowProducts.length > 0 && (
                   <div className="scroll-row-x no-scrollbar mt-3">
-                    <div className="flex w-max gap-3 sm:gap-4">
+                    <div className="flex w-max gap-3 sm:gap-4 items-stretch">
                       {quaternaryRowProducts.map((product, index) => {
                         const mrp = Math.round(product.price * 1.15);
                         const discountPercent = Math.round(((mrp - product.price) / mrp) * 100);
@@ -1003,7 +1002,7 @@ export function HomePage() {
                         return (
                           <div
                             key={`${group.id}-extra3-${product.id}-${index}`}
-                            className="min-w-[180px] sm:min-w-[200px] md:min-w-[220px] bg-white border border-tawang-gold/15 tawang-card rounded-xl p-2.5 sm:p-3 shadow-sm"
+                            className="flex flex-col h-full min-w-[180px] sm:min-w-[200px] md:min-w-[220px] bg-white border border-tawang-gold/15 tawang-card rounded-xl p-2.5 sm:p-3 shadow-sm"
                           >
                             <Link to={`/product/${product.id}`} onClick={() => trackProductView(product.id)} className="block">
                               <ProductImage
@@ -1017,9 +1016,9 @@ export function HomePage() {
                               </p>
                             </Link>
 
-                            <div className="mt-2 flex items-center gap-2">
-                              <p className="text-sm sm:text-base font-bold text-tawang-gold">â‚¹{product.price}</p>
-                              <p className="text-xs text-gray-400 line-through">â‚¹{mrp}</p>
+                            <div className="mt-auto pt-2 flex items-center gap-2">
+                              <p className="text-sm sm:text-base font-bold text-tawang-gold">Rs. {product.price}</p>
+                              <p className="text-xs text-gray-400 line-through">Rs. {mrp}</p>
                               <span className="text-[10px] sm:text-xs text-emerald-700 font-semibold">{discountPercent}% OFF</span>
                             </div>
 
