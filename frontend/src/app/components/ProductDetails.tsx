@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Star, ShoppingCart, Plus, Minus } from 'lucide-react';
 import { getProductById, getProducts, type Product } from '../data/products';
-import { PageHeading } from './PageHeading';
+
 import { ProductImage } from './ProductImage';
 import { ProductDetailsSkeleton } from './ProductDetailsSkeleton';
 import { addToCart } from '../utils/storage';
@@ -124,7 +124,6 @@ export function ProductDetails() {
 
   return (
     <div className="min-h-screen max-w-full overflow-x-hidden bg-tawang-cream">
-      <PageHeading title={product.name} variant="cream" />
 
       <div className="mx-auto max-w-7xl px-3 py-4 sm:px-4 md:py-8">
         <div className="overflow-hidden bg-white shadow-md sm:rounded-xl md:rounded-2xl md:shadow-lg">
@@ -137,6 +136,10 @@ export function ProductDetails() {
                 alt={product.name}
                 containerClassName="rounded-lg sm:rounded-xl md:rounded-2xl"
               />
+              {/* Product name shown below image on mobile and desktop */}
+              <h1 className="font-heading mt-3 text-lg font-bold leading-snug text-tawang-navy sm:text-xl md:text-2xl">
+                {product.name}
+              </h1>
             </div>
 
             <div className="flex min-h-0 w-full flex-col gap-3 sm:gap-4 md:gap-5">

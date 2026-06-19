@@ -13,11 +13,11 @@ type ProductImageProps = {
 
 const sizeClasses: Record<ProductImageSize, string> = {
   xs: 'h-24 sm:h-28 w-full',
-  md: 'h-28 sm:h-32 md:h-36 w-full',
+  md: 'h-28 sm:h-32 w-full',
   search: 'h-48 md:h-64 w-full',
   thumb: 'h-20 w-20 md:h-32 md:w-32',
   category: 'aspect-square sm:aspect-[4/3] w-full',
-  detail: 'aspect-square w-full',
+  detail: 'h-52 sm:h-64 md:h-72 w-full',
   related: 'h-28 sm:h-32 w-full',
 };
 
@@ -40,7 +40,7 @@ export function ProductImage({
         loading={priority ? 'eager' : 'lazy'}
         decoding="async"
         fetchPriority={priority ? 'high' : 'low'}
-        className={`max-h-full max-w-full object-contain object-center ${className}`.trim()}
+        className={`w-full h-full object-contain object-center ${className}`.trim()}
       />
     </div>
   );
