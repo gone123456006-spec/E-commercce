@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Search, ChevronRight, ChevronLeft, ShoppingBag, Truck, ShieldCheck, BadgeCheck, Star } from 'lucide-react';
 import { getProductById, getProducts } from '../data/products';
@@ -386,7 +386,7 @@ export function HomePage() {
 
       {/* Auto-Sliding Banner Section */}
       <div className="w-full max-w-7xl mx-auto px-3 sm:px-4 py-3 sm:py-4 md:py-6">
-        <div className="relative group rounded-xl sm:rounded-2xl overflow-hidden shadow-lg bg-tawang-beige h-[160px] sm:h-auto w-full">
+        <div className="relative group rounded-xl sm:rounded-2xl overflow-hidden shadow-lg bg-tawang-beige h-[160px] sm:h-[280px] md:h-[320px] lg:h-[380px] w-full">
           {banners.map((banner, idx) => {
             if (Math.abs(idx - currentBanner) > 1) return null;
             return (
@@ -402,7 +402,7 @@ export function HomePage() {
                 loading={idx === currentBanner ? 'eager' : 'lazy'}
                 decoding="async"
                 fetchPriority={idx === currentBanner ? 'high' : 'low'}
-                className="w-full h-full sm:h-auto object-cover sm:object-top"
+                className="w-full h-full object-cover object-center"
               />
             </Link>
             );
@@ -457,7 +457,7 @@ export function HomePage() {
               to={`/category/${category.id}`}
               className="group flex flex-col rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden bg-tawang-cream border border-tawang-gold/15 shadow-md hover:shadow-lg transition-all duration-300 active:scale-[0.98] sm:hover:-translate-y-1 touch-manipulation"
             >
-              <div className="relative h-24 sm:h-36 md:h-48 overflow-hidden">
+              <div className="relative h-24 sm:h-32 md:h-36 lg:h-44 overflow-hidden">
                 <img
                   src={category.image}
                   alt={category.name}
@@ -487,7 +487,7 @@ export function HomePage() {
                   key={`${category.id}-${category.image}`}
                   src={category.image}
                   alt={category.name.replace('\n', ' ')}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
                 />
               </div>
               <CategoryCardLabel name={category.name} size="sm" />
@@ -594,7 +594,7 @@ export function HomePage() {
                   key={`${category.id}-${category.image}`}
                   src={category.image}
                   alt={category.name.replace('\n', ' ')}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
                 />
               </div>
               <CategoryCardLabel name={category.name} size="sm" />
@@ -618,7 +618,7 @@ export function HomePage() {
                   key={`${category.id}-${category.image}`}
                   src={category.image}
                   alt={category.name.replace('\n', ' ')}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
                 />
               </div>
               <CategoryCardLabel name={category.name} size="sm" />
